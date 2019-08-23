@@ -1,6 +1,11 @@
-<%# index.ejs %>
+<%# index.ejs
+  #
+  # TODO: document
+  # TODO: insert nav bar
+  # TODO: style table
+  # TODO: add schedule page
+  %>
 
-<%# TODO: insert basic banner with login/logout buttons %>
 
 <%# locals:
   # ExistingItems: [] -- array of existing survey-tracker items in dynamodb
@@ -37,7 +42,6 @@
         </tr>
       </thead>
       <tbody id="tracker-tbody">
-        <!-- TODO: existing surveys go here -->
         <%
         if (locals.ExistingItems) {
           for(let i=0; i < ExistingItems.length; i++) {
@@ -86,8 +90,9 @@
 
   <!-- ON LOADS -->
   <script>
-    // TODO: load Edit buttons
     $("button.remove-row-btn").click(function(){ RemoveRow_EventListener( $(this).parent().parent() ); });
+
+    // TODO: load Edit buttons
   </script>
 
   <!-- LISTENERS -->

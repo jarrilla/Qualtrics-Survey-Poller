@@ -3,6 +3,10 @@
 // TODO: implement the following
 // - twilio api (for sending texts)
 // - node-schedule package (for scheduling texts)
+// 
+// TODO: navigation banner ejs partial
+// TODO: setup aws + dynamo freetier
+// TODO: add oauth w/ qualtrics
 
 // env vars
 require("dotenv").config();
