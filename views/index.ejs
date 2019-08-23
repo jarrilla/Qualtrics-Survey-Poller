@@ -86,7 +86,8 @@
 
   <!-- ON LOADS -->
   <script>
-    // TODO: load listeners for table drawn by ejs
+    // TODO: load Edit buttons
+    $("button.remove-row-btn").click(function(){ RemoveRow_EventListener( $(this).parent().parent() ); });
   </script>
 
   <!-- LISTENERS -->
@@ -150,7 +151,12 @@
     // if row is being tracked...
     // survey will be removed from DB and all tracking intervals will be cleared
     const RemoveRow_EventListener = tr => {
+      const user_res = confirm("Are you sure you want to remove this row? This action cannot be undone.");
+      if (user_res === false) return;
+      
+      // TODO: if --tracking-- first send to server and wait for delition confirmation
 
+      $(tr).fadeOut("slow");
     };
 
     // add row listener
@@ -168,10 +174,10 @@
         </tr>`).appendTo("#tracker-tbody");
 
       const $remove_btn = $($new_row).find("button.remove-row-btn").first();
-      $($remove_btn).click( function(){  } )
+      $($remove_btn).click(function(){ RemoveRow_EventListener( $new_row ); });
 
       const $track_btn = $($new_row).find("button.check-row-btn").first();
-      $($track_btn).click( function() { TrackSurvey_EventListener( $new_row ); } );
+      $($track_btn).click(function(){ TrackSurvey_EventListener( $new_row ); });
     });
 
     // create table.. may delete
