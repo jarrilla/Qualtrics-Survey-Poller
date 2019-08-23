@@ -1,0 +1,32 @@
+.bg-green {
+  background-color: green;
+  border-color: transparent;
+  color: white;
+}
+
+table button.round-btn {
+  border-radius: 50%;
+  transition: transform 0.25s;
+}
+
+table button.round-btn:hover {
+  transform: scale(1.25);
+}
+
+table button.btn-nice { border-radius: 2px; }
+
+.align-center { text-align: center; }
+
+td.row-status {
+  min-width: 25px;
+  user-select: none;
+  cursor: default;
+}
+
+td.row-status.tracking { color: green; }
+td.row-status.not-tracking { color: red; }
+
+td.edit-cell { min-width:100px; }
+td.surveyName-cell { min-width:100px; }
+
+table.content-table td { text-align: center; }

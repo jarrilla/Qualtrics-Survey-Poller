@@ -1,0 +1,188 @@
+<%# index.ejs %>
+
+<%# TODO: insert basic banner with login/logout buttons %>
+
+<%# locals:
+  # ExistingItems: [] -- array of existing survey-tracker items in dynamodb
+%>
+
+<!doctype html>
+<head>
+  <title>Survey Tracker - Index</title>
+
+  <link rel="stylesheet" type="text/css" href="css/styles.css">
+
+</head>
+<body>
+  <div>
+    TODO: nav bar
+  </div>
+
+  <div>
+    <button id="create-tab-btn">Create Table</button>
+  </div>
+
+  <div>
+    <table class="content-table">
+      <thead>
+        <tr>
+          <th><!-- remove row --></th>
+          <th><!-- edit row --></th>
+          <th>Survey Name</th>
+          <th>Survey Id</th>
+          <th>Phone #</th>
+          <th>(opt) Identifier</th>
+          <th><!-- query status --></th>
+          <th><!-- track button --></th>
+        </tr>
+      </thead>
+      <tbody id="tracker-tbody">
+        <!-- TODO: existing surveys go here -->
+        <%
+        if (locals.ExistingItems) {
+          for(let i=0; i < ExistingItems.length; i++) {
+            const item = ExistingItems[i];
+        %>
+
+        <tr>
+          <td><button class="remove-row-btn">-</button></td>
+          <td class="edit-cell"><button class="edit-cell-btn">Edit</button></td>
+          <td class="surveyName-cell">
+            <%- item.survey_name %>
+          </td>
+
+          <td>
+            <input type="text" class="surveyId-input" value="<%-item.survey_id%>">
+          </td>
+
+          <td>
+            <input type="text" class="subjectTel-input" value="<%-item.subject_tel%>">
+          </td>
+
+          <td>
+            <input type="text" class="subjectId-input"
+            <% if (item.subject_id) { %> value="<%-item.subject_id%>" <% } %>
+            >
+          </td>
+
+          <td class="row-status tracking">&#10004;</td>
+          <td></td>
+        </tr>
+
+        <% }} %>
+
+      </tbody>
+      <tfoot id="tracker-tfoot">
+        <tr>
+          <td colspan="8">
+            <button id="new-survey-btn" class="btn-nice">New Entry</button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+  <!-- ON LOADS -->
+  <script>
+    // TODO: load listeners for table drawn by ejs
+  </script>
+
+  <!-- LISTENERS -->
+  <script>
+    // common doc elements
+    const GetTableBodyElement = () => document.getElementById("tracker-tbody");
+    const GetNewSurveyButtonElement = () => document.getElementById("new-survey-btn");
+
+    // TrackSurvey_EventListener()
+    // event listener for "Track" button
+    // ask server to attempt to track the given survey if the ID is valid
+    const TrackSurvey_EventListener = tr => {
+      const $survey_id = $(tr).find(".surveyId-input").first().val();
+      const $subject_tel = $(tr).find(".subjectTel-input").first().val();
+      const $subject_id = $(tr).find(".subjectId-input").first().val();
+
+      // TODO: check input
+      alert("TODO: check input");
+
+      // cell elements
+      const $name_el = $(tr).find("td.surveyName-cell").first();
+      const $status_el = $(tr).find("td.row-status").first().hide();
+      const $track_btn = $(tr).find("button.check-row-btn").first();
+
+      // disable button
+      $($track_btn).attr("disabled", true);
+
+      $($status_el).text("...").show("slow", function() {
+        $.ajax({
+          url: "/api/trackSurvey",
+          type: "POST",
+          data: {
+            SurveyId: $survey_id,
+            SubjectTel: $subject_tel,
+            SubjectId: $subject_id
+          },
+          success: function(data) {
+            $($name_el).text(data).fadeIn("slow");
+
+            $($status_el).hide("slow", function() {
+              $(this).html("&#10004;").show("slow");
+              $($track_btn).fadeOut("slow");
+              $($status_el).addClass("tracking");
+            });
+          },
+          error: function(jqXHR) {
+            $($status_el).hide("slow", function() {
+              $(this).html("&#10008;").show("slow", function() {
+                alert(jqXHR.responseJSON.error);
+              });
+              $($track_btn).attr("disabled", false);
+              $($status_el).addClass("not-tracking");
+            });
+          }
+        });
+      });
+    };
+
+    // RemoveRow_EventListener()
+    // event listener for "-" button
+    // if row is being tracked...
+    // survey will be removed from DB and all tracking intervals will be cleared
+    const RemoveRow_EventListener = tr => {
+
+    };
+
+    // add row listener
+    $("#new-survey-btn").click(function() {
+      // make a new row and append it to tracker table
+      const $new_row = $(`<tr>
+          <td><button class="remove-row-btn">-</button></td>
+          <td class="edit-cell"></td>
+          <td class="surveyName-cell"></td>
+          <td><input type="text" class="surveyId-input"></td>
+          <td><input type="text" class="subjectTel-input"></td>
+          <td><input type="text" class="subjectId-input"></td>
+          <td class="row-status align-center"></td>
+          <td><button class="check-row-btn">Track</button></td>
+        </tr>`).appendTo("#tracker-tbody");
+
+      const $remove_btn = $($new_row).find("button.remove-row-btn").first();
+      $($remove_btn).click( function(){  } )
+
+      const $track_btn = $($new_row).find("button.check-row-btn").first();
+      $($track_btn).click( function() { TrackSurvey_EventListener( $new_row ); } );
+    });
+
+    // create table.. may delete
+    $("#create-tab-btn").click(function() {
+      $.ajax({
+        url: "/api/createTable",
+        type: "POST",
+        success: function(res) {
+          console.log(res);
+        }
+      });
+    });
+  </script>
+</body>
