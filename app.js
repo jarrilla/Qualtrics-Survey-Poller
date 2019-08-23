@@ -7,6 +7,7 @@
 // TODO: navigation banner ejs partial
 // TODO: setup aws + dynamo freetier
 // TODO: add oauth w/ qualtrics
+// TODO: send invalid routes to 404 page w/ navbar
 
 // env vars
 require("dotenv").config();
