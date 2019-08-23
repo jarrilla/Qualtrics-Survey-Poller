@@ -1,4 +1,8 @@
 // app.js
+// TODO: document
+// TODO: implement the following
+// - twilio api (for sending texts)
+// - node-schedule package (for scheduling texts)
 
 // env vars
 require("dotenv").config();
