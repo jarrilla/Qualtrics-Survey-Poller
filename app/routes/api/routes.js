@@ -9,6 +9,19 @@ const router = express.Router();
 // libs
 const dbHandlers = require("../../libs/dbHandlers");
 
+//------------------ GLOBAL VARS ---------------
+//----------------------------------------------
+
+// keep a map of all timeouts currently being tracked
+// keys: survey_id; vals: Interval
+const INTERVAL_MAP = new Map();
+
+// delay between interval triggers: default=10 minutes
+// TODO: load this from a DB value on server start?
+let INTERVAL_DELAY = 10*60*1000;
+
+
+
 // TODO
 // set up middleware
 
@@ -38,6 +51,32 @@ async function getSurveyInfo(survey_id) {
       message: resp_msg
     }];
   }
+}
+
+/**
+ * Begin tracking a survey's responses.
+ * Assumes survey_id is valid.
+ * @param {string} survey_id Qualtrics survey ID
+ */
+function trackSurvey(survey_id) {
+  INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
+}
+
+/**
+ * TODO: clear interval & unset entry from global map
+ * @param {string} survey_id Qualtrics survey ID
+ */
+async function untrackSurvey(survey_id) {
+
+}
+
+/**
+ * TODO: poll survey responses to determine how many responses the subject has submitted that day
+ * this should be re-set every day when a message is sent out with the previous day's progress
+ * @param {string} survey_id Qualtrics survey ID
+ */
+async function pollSurveyResponses(survey_id) {
+
 }
 
 //------------------ ROUTES --------------------

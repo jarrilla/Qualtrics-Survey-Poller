@@ -1,3 +1,5 @@
+// @ts-check
+
 // app.js
 // TODO: document
 // TODO: implement the following
