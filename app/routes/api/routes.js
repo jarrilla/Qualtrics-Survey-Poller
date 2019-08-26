@@ -8,6 +8,7 @@ const router = express.Router();
 
 // libs
 const dbHandlers = require("../../libs/dbHandlers");
+const fmt = require("../../libs/fmt");
 
 //------------------ GLOBAL VARS ---------------
 //----------------------------------------------
@@ -76,7 +77,22 @@ async function untrackSurvey(survey_id) {
  * @param {string} survey_id Qualtrics survey ID
  */
 async function pollSurveyResponses(survey_id) {
+  try {
+    // TODO:
+    // - check db for last response we logged
+    // - check qualtrics api for latest response
+    // if latest response != last logged => log response & #responses-today +1
 
+    const [api_res, db_res] = [
+      await axios.get("TODO: URL", QUALTRICS_API_CONFIG),
+      await dbHandlers.getLatestResponseTime(survey_id)
+    ];
+    
+    
+  }
+  catch (e) {
+    fmt.packError(e, "Unepected error polling survey.");
+  }
 }
 
 //------------------ ROUTES --------------------

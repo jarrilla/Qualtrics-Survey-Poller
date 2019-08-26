@@ -84,6 +84,10 @@ async function putItem(
   }
 }
 
+async function getLastResponseTime(survey_id) {
+  
+}
+
 module.exports = {
   createTable: createTable,
   scanTable: scanTable,
