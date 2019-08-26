@@ -12,12 +12,12 @@ const dbHandlers = require("../libs/dbHandlers");
 
 // get all existing table entries and pass them to index page
 router.get("/", async function(req, res) {
-  const data = await dbHandlers.scanTable();
-  const table_items = data[1].Items;
+  const params = {};
 
-  const params = {
-    ExistingItems: table_items
-  };
+  const [err, data] = await dbHandlers.scanTable();
+
+  if (err) params.Error = err.msg;
+  if (data && data.Items) params.ExistingItems = data.Items;
 
   res.render("index.ejs", params);
 });

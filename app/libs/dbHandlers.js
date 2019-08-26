@@ -3,6 +3,9 @@
 
 const AWS = require("aws-sdk");
 
+// libs
+const fmt = require("./format");
+
 AWS.config.update({
   region: "us-east-2",
   endpoint: "http://localhost:8000"
@@ -36,7 +39,7 @@ async function createTable() {
     return [null, data];
   }
   catch (e) {
-    return [e]
+    return fmt.packError(e, "Unexpected error creating new Survey Tracker data-table.");
   }
 }
 
@@ -45,10 +48,11 @@ async function createTable() {
 async function scanTable() {
   try {
     const data = await DOC_CLIENT.scan(TABLE_PARAMS).promise();
+
     return [null, data];
   }
   catch (e) {
-    return [e];
+    return fmt.packError(e, "Unexpected error scanning Survey Tracker data.");
   }
 }
 
