@@ -7,8 +7,9 @@ const express = require("express");
 const router = express.Router();
 
 // libs
-const dbHandlers = require("../../libs/dbHandlers");
 const fmt = require("../../libs/fmt");
+const dbHandlers = require("../../libs/dbHandlers");
+const qualtricsApi = require("../../libs/qualtricsApiHandlers");
 
 //------------------ GLOBAL VARS ---------------
 //----------------------------------------------
@@ -29,14 +30,11 @@ let INTERVAL_DELAY = 10*60*1000;
 //------------- QUALTRICS API HELPERS ----------
 //----------------------------------------------
 
-// qualtrics api headers
-const QUALTRICS_API_CONFIG = { headers: { "X-API-TOKEN": process.env.QUALTRICS_API_KEY } };
-
 // ping qualtrics for a survey
 // returns the survey name if successful
 async function getSurveyInfo(survey_id) {
   try {
-    const res = await axios.get(`https://cmu.ca1.qualtrics.com/API/v3/surveys/${survey_id}`, QUALTRICS_API_CONFIG);
+    const res = await axios.get(`https://cmu.ca1.qualtrics.com/API/v3/surveys/${survey_id}`, QUALTRICS_API_PARAMS());
     const { name } = res.data.result;
 
     return [null, name];
@@ -68,7 +66,12 @@ function trackSurvey(survey_id) {
  * @param {string} survey_id Qualtrics survey ID
  */
 async function untrackSurvey(survey_id) {
+  // TODO: remove entry from DB
+  // if succeeded, clear interval
 
+  const interval = INTERVAL_MAP.get(survey_id);
+  if (interval) clearInterval(interval);
+  return true;
 }
 
 /**
@@ -84,15 +87,39 @@ async function pollSurveyResponses(survey_id) {
     // if latest response != last logged => log response & #responses-today +1
 
     const [api_res, db_res] = [
-      await axios.get("TODO: URL", QUALTRICS_API_CONFIG),
+      await getLatestSurveyResponse(survey_id),
       await dbHandlers.getLatestResponseTime(survey_id)
     ];
     
-    
+    // TODO: finish
   }
   catch (e) {
     fmt.packError(e, "Unepected error polling survey.");
   }
+}
+
+/**
+ * Get a survey's latest response.
+ * @param {string} survey_id Qualtrics survey ID
+ */
+async function getLatestSurveyResponse(survey_id) {
+    // first, we post the export request
+    const [e1, export_req] = await qualtricsApi.createResponseExport(survey_id);
+    if (e1) return e1;
+    const progress_id = export_request_res.results.progressId;
+
+    // next we poll the progress until it's 100%=
+    const [e2, export_prog] = await qualtricsApi.getResponseExportProgress(survey_id, progress_id);
+    if (e2) return e2;
+    const file_id = export_prog.result.fileId;
+
+    // finally, we poll the file for data
+    const [e3, export_file] = await qualtricsApi.getResponseExportFile(survey_id, file_id);
+    if (e3) return e3;
+    const latest_response = export_file[0];
+
+
+    return latest_response;
 }
 
 //------------------ ROUTES --------------------
@@ -112,6 +139,8 @@ router.post("/createTable", async function(req, res){
 router.post("/trackSurvey", async function(req, res) {
   //SV_dnEGQcB3RAcAVW5
   const { SurveyId, SubjectTel, SubjectId } = req.body;
+
+  // TODO: move this to track survey function call
 
   const [api_err, survey_name] = await getSurveyInfo(SurveyId);
   if (api_err) res.status(api_err.status).send({error:api_err.message});

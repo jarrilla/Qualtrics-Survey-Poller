@@ -84,8 +84,17 @@ async function putItem(
   }
 }
 
+/**
+ * Get a survey's latest response time if it exists.
+ * @param {string} survey_id Qualtrics survey ID
+ */
 async function getLastResponseTime(survey_id) {
-  
+  try {
+    
+  }
+  catch (e) {
+
+  }
 }
 
 module.exports = {
