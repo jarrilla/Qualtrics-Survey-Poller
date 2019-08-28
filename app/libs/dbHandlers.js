@@ -19,11 +19,9 @@ const TABLE_PARAMS = {
   TableName: TABLE_TITLE,
   KeySchema: [
     { AttributeName: "survey_id", KeyType: "HASH" },
-    { AttributeName: "survey_name", KeyType: "RANGE" }
   ],
   AttributeDefinitions: [
     { AttributeName: "survey_id", AttributeType: "S" },
-    { AttributeName: "survey_name", AttributeType: "S" }
   ],
   ProvisionedThroughput: {
     ReadCapacityUnits: 10,
@@ -55,19 +53,22 @@ async function scanTable() {
   }
 }
 
-// Put a new item into survey tracking table
-async function putItem(
-  survey_name,
-  survey_id,
-  subject_tel,
-  subject_id=null,
-) {
+/**
+ * Attempt to put a new item into tracking data-table. Returns error if survey_id already exists
+ * @param {string} survey_name 
+ * @param {string} survey_id 
+ * @param {string} subject_tel 
+ * @param {string} subject_id 
+ */
+async function putItem(survey_name, survey_id, subject_tel, subject_id=null) {
   const params = {
     TableName: TABLE_TITLE,
     Item: {
       // lookup keys
-      survey_name: survey_name,
       survey_id: survey_id,
+
+      // survey name (from api)
+      survey_name: survey_name,
 
       // subject telephone
       subject_tel: subject_tel,
@@ -98,6 +99,27 @@ async function putItem(
     }
     
     return fmt.packError(e, msg);
+  }
+}
+
+/**
+ * Attempt to remove an item matching survey_id.
+ * @param {string} survey_id 
+ */
+async function removeItem(survey_id) {
+  try {
+    const params = {
+      TableName: TABLE_TITLE,
+      Key: {
+        survey_id: survey_id
+      }
+    };
+
+    await DOC_CLIENT.delete(params).promise();
+    return fmt.packSuccess(null);
+  }
+  catch (e) {
+    fmt.packError(e, "Unexpected error attempting to remove survey from data-table.");
   }
 }
 
@@ -154,5 +176,6 @@ module.exports = {
   scanTable: scanTable,
   putItem: putItem,
   getLastRecordedResponseTime: getLastRecordedResponseTime,
-  updateLastRecordedResponseTime: updateLastRecordedResponseTime
+  updateLastRecordedResponseTime: updateLastRecordedResponseTime,
+  removeItem: removeItem
 };

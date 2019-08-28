@@ -161,7 +161,7 @@
       $.ajax({
         url: "/api/untrackSurvey",
         type: "POST",
-        data: getSurveyId(tr),
+        data: { SurveyId: getSurveyId(tr) },
         success: function(data) {
           console.log("succ");
           $(tr).fadeOut("slow");

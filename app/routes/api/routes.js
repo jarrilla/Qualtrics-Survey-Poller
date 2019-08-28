@@ -47,6 +47,7 @@ async function trackNewSurvey(survey_id, subject_tel, subject_id) {
   const survey_name = api_res.result.name;
   
   // put item in DB first
+  // @ts-ignore
   const [db_err, db_res] = await dbHandlers.putItem(survey_name, ...arguments);
   if (db_err) return [db_err];
 
@@ -60,12 +61,13 @@ async function trackNewSurvey(survey_id, subject_tel, subject_id) {
  * @param {string} survey_id Qualtrics survey ID
  */
 async function untrackSurvey(survey_id) {
-  // TODO: remove entry from DB
-  // if succeeded, clear interval
+  const [db_err, ] = await dbHandlers.removeItem(survey_id);
+  if (db_err) return [db_err];
 
   const interval = INTERVAL_MAP.get(survey_id);
   if (interval) clearInterval(interval);
-  return true;
+
+  return fmt.packSuccess(null);
 }
 
 /**
@@ -167,6 +169,17 @@ router.post("/trackSurvey", async function(req, res) {
   if (queue_err) res.status(queue_err.status_code).send({error:queue_err.msg});
   else res.status(200).send(queue_res);
 
+});
+
+/**
+ * Untrack a survey if it exists.
+ */
+router.post("/untrackSurvey", async function(req, res) {
+  const { SurveyId } = req.body;
+
+  const [error, ] = await untrackSurvey(SurveyId);
+  if (error) res.status(error.status_code).send({error:error.msg});
+  else res.status(200).send();
 });
 
 //----------------------------------------------
