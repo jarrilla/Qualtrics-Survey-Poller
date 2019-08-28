@@ -91,21 +91,26 @@ async function pollSurveyResponses(survey_id) {
     if (api_err) return [api_err];
     if (db_err) return [db_err];
 
-    console.log(api_data);
-    console.log(db_data);
-
     // no responses yet, do nothing
     if (!api_data) return;
 
+    // determine if we're going to update db object
+    let do_update = false;
     const latest = new Date(api_data.values.endDate);
-    if (db_data.last_recorded_response_time == null) {
-      // TODO: update db object
-    }
+    if (db_data.last_recorded_response_time == null) do_update = true;
     else {
       const last = new Date(db_data.last_recorded_response_time);
-      if (latest > last) {
-        // TODO: update db object
-      }
+      if (latest > last) do_update = true;
+    }
+
+    if (do_update) {
+      const [update_err, ] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
+      if (update_err) return [update_err];
+
+      // TODO:
+      // a new response was recorded send text:
+      
+      // TODO: add user setting for what message to send
     }
   }
   catch (e) {

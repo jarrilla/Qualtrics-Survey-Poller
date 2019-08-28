@@ -92,6 +92,33 @@ async function putItem(
 }
 
 /**
+ * set a survey's .last_recorded_response_time=new_date
+ * and increment .responses_today+1
+ * @param {string} survey_id 
+ * @param {Date} new_date 
+ */
+async function updateLastRecordedResponseTime(survey_id, new_date) {
+  try {
+    const params = {
+      TableName: TABLE_TITLE,
+      Key: { survey_id: survey_id },
+      UpdateExpression: "set last_recorded_response_time = :d, responses_today = responses_today + :v",
+      ExpressionAttributeValues: {
+        ":d": new_date.toISOString(),
+        ":v": 1
+      },
+      ReturnValues: "UPDATED_NEW"
+    };
+
+    const res = await DOC_CLIENT.update(params).promise();
+    return fmt.packSuccess(res);
+  }
+  catch (e) {
+    fmt.packError(e, "Unexpected error updating last response time in SurveyTracker data-table.");
+  }
+}
+
+/**
  * Get a survey's latest response time if it exists.
  * @param {string} survey_id Qualtrics survey ID
  */
@@ -116,5 +143,6 @@ module.exports = {
   createTable: createTable,
   scanTable: scanTable,
   putItem: putItem,
-  getLastRecordedResponseTime: getLastRecordedResponseTime
+  getLastRecordedResponseTime: getLastRecordedResponseTime,
+  updateLastRecordedResponseTime: updateLastRecordedResponseTime
 };
