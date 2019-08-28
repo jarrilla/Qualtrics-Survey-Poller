@@ -130,7 +130,8 @@
             SubjectId: $subject_id
           },
           success: function(data) {
-            $($name_el).text(data).fadeIn("slow");
+            const _survey_name = data.survey_name;
+            $($name_el).text(_survey_name).fadeIn("slow");
 
             $($status_el).hide("slow", function() {
               $(this).html("&#10004;").show("slow");

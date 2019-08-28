@@ -39,7 +39,7 @@ async function createTable() {
     return [null, data];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error creating new Survey Tracker data-table.");
+    return fmt.packError(e, "Unexpected error creating new SurveyTracker data-table.");
   }
 }
 
@@ -52,7 +52,7 @@ async function scanTable() {
     return [null, data];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error scanning Survey Tracker data.");
+    return fmt.packError(e, "Unexpected error scanning SurveyTracker data-table.");
   }
 }
 
@@ -62,7 +62,7 @@ async function putItem(
   survey_name,
   survey_id,
   subject_tel,
-  subject_id=null
+  subject_id=null,
 ) {
   const params = {
     TableName: TABLE_TITLE,
@@ -70,17 +70,21 @@ async function putItem(
       survey_name: survey_name,
       survey_id: survey_id,
       subject_tel: subject_tel,
-      responses_today: 0
+
+      // default fields
+      responses_today: 0,
+      tracking_status: "TRACKING"
     }
   };
   if (subject_id) params.Item.subject_id = subject_id;
 
   try {
-    const data = await DOC_CLIENT.put(params).promise();
-    return [null, data];
+    // don't need to store result; put() returns {}
+    await DOC_CLIENT.put(params).promise();
+    return fmt.packSuccess(params.Item);
   }
   catch (e) {
-    return [err];
+    return fmt.packError(e, "Unexpected error storing survey to SurveyTracker data-table.");
   }
 }
 

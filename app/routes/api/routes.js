@@ -1,3 +1,5 @@
+// @ts-check
+
 // api/routes.js
 // all API routes
 
@@ -7,7 +9,7 @@ const express = require("express");
 const router = express.Router();
 
 // libs
-const fmt = require("../../libs/fmt");
+const fmt = require("../../libs/format");
 const dbHandlers = require("../../libs/dbHandlers");
 const qualtricsApi = require("../../libs/qualtricsApiHandlers");
 
@@ -20,7 +22,7 @@ const INTERVAL_MAP = new Map();
 
 // delay between interval triggers: default=10 minutes
 // TODO: load this from a DB value on server start?
-let INTERVAL_DELAY = 10*60*1000;
+let INTERVAL_DELAY = 5000;
 
 
 
@@ -30,35 +32,27 @@ let INTERVAL_DELAY = 10*60*1000;
 //------------- QUALTRICS API HELPERS ----------
 //----------------------------------------------
 
-// ping qualtrics for a survey
-// returns the survey name if successful
-async function getSurveyInfo(survey_id) {
-  try {
-    const res = await axios.get(`https://cmu.ca1.qualtrics.com/API/v3/surveys/${survey_id}`, QUALTRICS_API_PARAMS());
-    const { name } = res.data.result;
-
-    return [null, name];
-  }
-  catch (e) {
-    const { status } = e.response;
-    const resp_msg = (status == 404) ? "Survey not found." : "Unknown error. Please try again.";
-
-    // TODO: log error to DB
-
-    return [{
-      status: status,
-      message: resp_msg
-    }];
-  }
-}
-
 /**
  * Begin tracking a survey's responses.
  * Assumes survey_id is valid.
  * @param {string} survey_id Qualtrics survey ID
+ * @param {string} subject_tel
+ * @param {string?} subject_id
+ * @returns [*,string] The survey name in Qualtrics, if successful.
  */
-function trackSurvey(survey_id) {
+async function trackNewSurvey(survey_id, subject_tel, subject_id) {
+  // ping API to get survey name
+  const [api_err, api_res] = await qualtricsApi.getSurveyInfo(survey_id);
+  if (api_err) return [api_err];
+  const survey_name = api_res.result.name;
+  
+  // put item in DB first
+  const [db_err, db_res] = await dbHandlers.putItem(survey_name, ...arguments);
+  if (db_err) return [db_err];
+
   INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
+
+  return fmt.packSuccess(db_res);
 }
 
 /**
@@ -86,12 +80,15 @@ async function pollSurveyResponses(survey_id) {
     // - check qualtrics api for latest response
     // if latest response != last logged => log response & #responses-today +1
 
+    /*
     const [api_res, db_res] = [
       await getLatestSurveyResponse(survey_id),
       await dbHandlers.getLatestResponseTime(survey_id)
-    ];
-    
-    // TODO: finish
+    ];*/
+
+    const [api_err, api_res] = await getLatestSurveyResponse(survey_id);
+    if (api_err) return [api_err];
+    else return fmt.packSuccess(api_res);
   }
   catch (e) {
     fmt.packError(e, "Unepected error polling survey.");
@@ -100,26 +97,29 @@ async function pollSurveyResponses(survey_id) {
 
 /**
  * Get a survey's latest response.
+ * TODO: fix this
  * @param {string} survey_id Qualtrics survey ID
  */
 async function getLatestSurveyResponse(survey_id) {
     // first, we post the export request
     const [e1, export_req] = await qualtricsApi.createResponseExport(survey_id);
-    if (e1) return e1;
-    const progress_id = export_request_res.results.progressId;
+    if (e1) return [e1];
+    //console.log(export_req);
+    const progress_id = export_req.result.progressId;
 
-    // next we poll the progress until it's 100%=
+    // next we poll the progress until it's 100%
     const [e2, export_prog] = await qualtricsApi.getResponseExportProgress(survey_id, progress_id);
-    if (e2) return e2;
+    if (e2) return [e2];
     const file_id = export_prog.result.fileId;
 
     // finally, we poll the file for data
     const [e3, export_file] = await qualtricsApi.getResponseExportFile(survey_id, file_id);
-    if (e3) return e3;
-    const latest_response = export_file[0];
+    if (e3) return [e3];
+    const responses = export_file.responses;
+    const latest_response = responses.length ? responses[0] : null;
 
-
-    return latest_response;
+    // done
+    return fmt.packSuccess(latest_response);
 }
 
 //------------------ ROUTES --------------------
@@ -127,7 +127,7 @@ async function getLatestSurveyResponse(survey_id) {
 
 // Create survey tracker table
 router.post("/createTable", async function(req, res){
-  const [db_err, ] = dbHandlers.createTable();
+  const [db_err, ] = await dbHandlers.createTable();
   if (db_err) res.status(500).send();
   else res.status(200).send();
 });
@@ -135,21 +135,16 @@ router.post("/createTable", async function(req, res){
 // attempt to track a new survey
 // If survey doesn't exist, returns 404
 // If DB insert fails, returns 500
-// TODO: does not handle edits
+//
+// TODO: check if survey_id already exists, and ask user if they want to overwrite
 router.post("/trackSurvey", async function(req, res) {
-  //SV_dnEGQcB3RAcAVW5
+  
   const { SurveyId, SubjectTel, SubjectId } = req.body;
 
-  // TODO: move this to track survey function call
+  const [queue_err, queue_res] = await trackNewSurvey(SurveyId, SubjectTel, SubjectId);
+  if (queue_err) res.status(queue_err.status_code).send({error:"Unknown error. Please try again."});
+  else res.status(200).send(queue_res);
 
-  const [api_err, survey_name] = await getSurveyInfo(SurveyId);
-  if (api_err) res.status(api_err.status).send({error:api_err.message});
-  else {
-    // survey exists, add entry to database table
-    const [db_err, ] = await dbHandlers.putItem(survey_name, SurveyId, SubjectTel, SubjectId);
-    if (db_err) res.status(500).send({error:"Unknown error. Please try again."});
-    else res.status(200).send(survey_name);
-  }
 });
 
 module.exports = router;
