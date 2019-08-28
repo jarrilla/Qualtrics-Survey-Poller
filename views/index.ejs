@@ -105,9 +105,9 @@
     // event listener for "Track" button
     // ask server to attempt to track the given survey if the ID is valid
     const TrackSurvey_EventListener = tr => {
-      const $survey_id = $(tr).find(".surveyId-input").first().val();
-      const $subject_tel = $(tr).find(".subjectTel-input").first().val();
-      const $subject_id = $(tr).find(".subjectId-input").first().val();
+      const $survey_id = $(tr).find(".surveyId-input").first().val().trim();
+      const $subject_tel = $(tr).find(".subjectTel-input").first().val().trim();
+      const $subject_id = $(tr).find(".subjectId-input").first().val().trim();
 
       // TODO: check input
       alert("TODO: check input");

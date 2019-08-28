@@ -97,12 +97,10 @@ async function pollSurveyResponses(survey_id) {
     // determine if we're going to update db object
     let do_update = false;
     const latest = new Date(api_data.values.endDate);
-    if (db_data.last_recorded_response_time == null) do_update = true;
-    else {
-      const last = new Date(db_data.last_recorded_response_time);
-      if (latest > last) do_update = true;
-    }
+    const last = db_data.Item.last_recorded_response_time ? new Date(db_data.Item.last_recorded_response_time) : null;
+    if (last == null || latest > last) do_update = true;
 
+    // proceed to update
     if (do_update) {
       const [update_err, ] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
       if (update_err) return [update_err];
