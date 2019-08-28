@@ -22,7 +22,7 @@ const INTERVAL_MAP = new Map();
 
 // delay between interval triggers: default=10 minutes
 // TODO: load this from a DB value on server start?
-let INTERVAL_DELAY = 5000;
+let INTERVAL_DELAY = 10*60*1000; // (10 minutes)
 
 
 
@@ -164,9 +164,32 @@ router.post("/trackSurvey", async function(req, res) {
   const { SurveyId, SubjectTel, SubjectId } = req.body;
 
   const [queue_err, queue_res] = await trackNewSurvey(SurveyId, SubjectTel, SubjectId);
-  if (queue_err) res.status(queue_err.status_code).send({error:"Unknown error. Please try again."});
+  if (queue_err) res.status(queue_err.status_code).send({error:queue_err.msg});
   else res.status(200).send(queue_res);
 
 });
+
+//----------------------------------------------
+//------------------- INIT ---------------------
+//----------------------------------------------
+
+/**
+ * initialize tracking of surveys already in data-table. called once when server starts
+ */
+(async function _initTracking_() {
+  try {
+    const [db_err, db_data] = await dbHandlers.scanTable();
+    if (db_err) return [db_err];
+
+    for (let i=0; i < db_data.Items; i++) {
+      const survey_id = db_data.Items[i].survey_id;
+      INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
+    }
+
+  }
+  catch (e) {
+
+  }
+})();
 
 module.exports = router;

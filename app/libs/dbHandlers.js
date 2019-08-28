@@ -77,6 +77,10 @@ async function putItem(
       responses_today: 0,
       tracking_status: "TRACKING",
       last_recorded_response_time: null
+    },
+    ConditionExpression: "attribute_not_exists( #sid )",
+    ExpressionAttributeNames: {
+      "#sid": "survey_id"
     }
   };
   if (subject_id) params.Item.subject_id = subject_id;
@@ -87,7 +91,14 @@ async function putItem(
     return fmt.packSuccess(params.Item);
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error storing survey to SurveyTracker data-table.");
+    let msg = "Unexpected error storing survey to SurveyTracker data-table.";
+
+    // item already exists in table
+    if (e.code == "ConditionalCheckFailedException") {
+      msg = `Survey with id: ${survey_id} is already being tracked.`;
+    }
+    
+    return fmt.packError(e, msg);
   }
 }
 
