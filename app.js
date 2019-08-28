@@ -5,6 +5,12 @@
 // TODO: implement the following
 // - twilio api (for sending texts)
 // - node-schedule package (for scheduling texts)
+// TODO: add settings for:
+// - when to send messages
+// - what should messages contain
+// - automatically untrack inactive surveys
+//
+// TODO: load all tracker Intervals on server re-start
 // 
 // TODO: navigation banner ejs partial
 // TODO: setup aws + dynamo freetier
