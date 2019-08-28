@@ -48,8 +48,7 @@ async function createTable() {
 async function scanTable() {
   try {
     const data = await DOC_CLIENT.scan(TABLE_PARAMS).promise();
-
-    return [null, data];
+    return fmt.packSuccess(data);
   }
   catch (e) {
     return fmt.packError(e, "Unexpected error scanning SurveyTracker data-table.");
@@ -67,13 +66,17 @@ async function putItem(
   const params = {
     TableName: TABLE_TITLE,
     Item: {
+      // lookup keys
       survey_name: survey_name,
       survey_id: survey_id,
+
+      // subject telephone
       subject_tel: subject_tel,
 
       // default fields
       responses_today: 0,
-      tracking_status: "TRACKING"
+      tracking_status: "TRACKING",
+      last_recorded_response_time: null
     }
   };
   if (subject_id) params.Item.subject_id = subject_id;
@@ -92,17 +95,26 @@ async function putItem(
  * Get a survey's latest response time if it exists.
  * @param {string} survey_id Qualtrics survey ID
  */
-async function getLastResponseTime(survey_id) {
+async function getLastRecordedResponseTime(survey_id) {
   try {
-    
+    const params = {
+      TableName: TABLE_TITLE,
+      Key: {
+        survey_id: survey_id
+      }
+    };
+
+    const data = await DOC_CLIENT.get(params).promise();
+    return fmt.packSuccess(data);
   }
   catch (e) {
-
+    return fmt.packError(e, "Unexpected error reading response time from SurveyTracker data-table.");
   }
 }
 
 module.exports = {
   createTable: createTable,
   scanTable: scanTable,
-  putItem: putItem
+  putItem: putItem,
+  getLastRecordedResponseTime: getLastRecordedResponseTime
 };

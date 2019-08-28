@@ -80,15 +80,33 @@ async function pollSurveyResponses(survey_id) {
     // - check qualtrics api for latest response
     // if latest response != last logged => log response & #responses-today +1
 
-    /*
     const [api_res, db_res] = [
       await getLatestSurveyResponse(survey_id),
-      await dbHandlers.getLatestResponseTime(survey_id)
-    ];*/
+      await dbHandlers.getLastRecordedResponseTime(survey_id)
+    ];
 
-    const [api_err, api_res] = await getLatestSurveyResponse(survey_id);
+    const [api_err, api_data] = api_res;
+    const [db_err, db_data] = db_res;
+
     if (api_err) return [api_err];
-    else return fmt.packSuccess(api_res);
+    if (db_err) return [db_err];
+
+    console.log(api_data);
+    console.log(db_data);
+
+    // no responses yet, do nothing
+    if (!api_data) return;
+
+    const latest = new Date(api_data.values.endDate);
+    if (db_data.last_recorded_response_time == null) {
+      // TODO: update db object
+    }
+    else {
+      const last = new Date(db_data.last_recorded_response_time);
+      if (latest > last) {
+        // TODO: update db object
+      }
+    }
   }
   catch (e) {
     fmt.packError(e, "Unepected error polling survey.");
@@ -122,6 +140,7 @@ async function getLatestSurveyResponse(survey_id) {
     return fmt.packSuccess(latest_response);
 }
 
+//----------------------------------------------
 //------------------ ROUTES --------------------
 //----------------------------------------------
 
