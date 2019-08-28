@@ -90,24 +90,26 @@
 
   <!-- ON LOADS -->
   <script>
+    // load event listeners for un-tracking a survey
     $("button.remove-row-btn").click(function(){ RemoveRow_EventListener( $(this).parent().parent() ); });
 
-    // TODO: load Edit buttons
+    // TODO:
+    // load event listeners for editing a survey being tracked
   </script>
 
   <!-- LISTENERS -->
   <script>
     // common doc elements
-    const GetTableBodyElement = () => document.getElementById("tracker-tbody");
-    const GetNewSurveyButtonElement = () => document.getElementById("new-survey-btn");
+    const getSurveyId = tr => $(tr).find(".surveyId-input").first().val().trim();
+    const getSubjectTel = tr => $(tr).find(".subjectTel-input").first().val().trim();
+    const getSubjectId = tr => $(tr).find(".subjectId-input").first().val().trim();
+    const getRowFields = tr => { return { SurveyId: getSurveyId(tr), SubjectTel: getSubjectTel(tr), SubjectId: getSubjectId(tr) }; };
 
     // TrackSurvey_EventListener()
     // event listener for "Track" button
     // ask server to attempt to track the given survey if the ID is valid
     const TrackSurvey_EventListener = tr => {
-      const $survey_id = $(tr).find(".surveyId-input").first().val().trim();
-      const $subject_tel = $(tr).find(".subjectTel-input").first().val().trim();
-      const $subject_id = $(tr).find(".subjectId-input").first().val().trim();
+      const row_fields = getRowFields(tr);
 
       // TODO: check input
       alert("TODO: check input");
@@ -124,11 +126,7 @@
         $.ajax({
           url: "/api/trackSurvey",
           type: "POST",
-          data: {
-            SurveyId: $survey_id,
-            SubjectTel: $subject_tel,
-            SubjectId: $subject_id
-          },
+          data: row_fields,
           success: function(data) {
             const _survey_name = data.survey_name;
             $($name_el).text(_survey_name).fadeIn("slow");
@@ -136,7 +134,7 @@
             $($status_el).hide("slow", function() {
               $(this).html("&#10004;").show("slow");
               $($track_btn).fadeOut("slow");
-              $($status_el).addClass("tracking");
+              $($status_el).removeClass("not-tracking").addClass("tracking");
             });
           },
           error: function(jqXHR) {
@@ -145,7 +143,7 @@
                 alert(jqXHR.responseJSON.error);
               });
               $($track_btn).attr("disabled", false);
-              $($status_el).addClass("not-tracking");
+              $($status_el).removeClass("tracking").addClass("not-tracking");
             });
           }
         });
@@ -160,9 +158,18 @@
       const user_res = confirm("Are you sure you want to remove this row? This action cannot be undone.");
       if (user_res === false) return;
       
-      // TODO: if --tracking-- first send to server and wait for delition confirmation
-
-      $(tr).fadeOut("slow");
+      $.ajax({
+        url: "/api/untrackSurvey",
+        type: "POST",
+        data: getSurveyId(tr),
+        success: function(data) {
+          console.log("succ");
+          $(tr).fadeOut("slow");
+        },
+        error: function (jqXHR) {
+          alert(jqXHR.responseJSON.error);
+        }
+      });
     };
 
     // add row listener

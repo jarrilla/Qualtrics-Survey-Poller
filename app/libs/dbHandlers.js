@@ -56,7 +56,6 @@ async function scanTable() {
 }
 
 // Put a new item into survey tracking table
-// TODO: do not allow item overwrite from this method
 async function putItem(
   survey_name,
   survey_id,
