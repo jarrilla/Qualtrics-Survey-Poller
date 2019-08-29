@@ -1,7 +1,7 @@
 {
   "name": "01",
   "version": "1.0.0",
-  "description": "Using survey:\r http://cmu.ca1.qualtrics.com/jfe/form/SV_dnEGQcB3RAcAVW5",
+  "description": "Qualtrics survey tracker for CMU Psych department.",
   "main": "app.js",
   "dependencies": {
     "aws-sdk": "^2.516.0",
