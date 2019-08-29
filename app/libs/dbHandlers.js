@@ -6,15 +6,17 @@ const AWS = require("aws-sdk");
 // libs
 const fmt = require("./format");
 
+// config aws
 AWS.config.update({
-  region: "us-east-2",
-  endpoint: "http://localhost:8000"
+  accessKeyId: process.env.AWS_ACCESS_KEY,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: "us-east-2"
 });
 
 const DYNAMO_DB = new AWS.DynamoDB();
 const DOC_CLIENT = new AWS.DynamoDB.DocumentClient();
 
-const TABLE_TITLE = "TrackingSurveys";
+const TABLE_TITLE = process.env.SURVEYS_DATA_TABLE;
 const TABLE_PARAMS = {
   TableName: TABLE_TITLE,
   KeySchema: [
@@ -24,8 +26,8 @@ const TABLE_PARAMS = {
     { AttributeName: "survey_id", AttributeType: "S" },
   ],
   ProvisionedThroughput: {
-    ReadCapacityUnits: 10,
-    WriteCapacityUnits: 10
+    ReadCapacityUnits: 5,
+    WriteCapacityUnits: 5
   }
 };
 

@@ -154,6 +154,8 @@ async function getLatestSurveyResponse(survey_id) {
 
 // Create survey tracker table
 router.post("/createTable", async function(req, res){
+  return res.status(500).send({error:"Not allowed."});
+
   const [db_err, ] = await dbHandlers.createTable();
   if (db_err) res.status(500).send();
   else res.status(200).send();
