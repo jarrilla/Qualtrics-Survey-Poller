@@ -163,7 +163,6 @@
         type: "POST",
         data: { SurveyId: getSurveyId(tr) },
         success: function(data) {
-          console.log("succ");
           $(tr).fadeOut("slow");
         },
         error: function (jqXHR) {
@@ -194,6 +193,7 @@
     });
 
     // create table.. may delete
+    // TODO: remove this button once a table is created
     $("#create-tab-btn").click(function() {
       $.ajax({
         url: "/api/createTable",
