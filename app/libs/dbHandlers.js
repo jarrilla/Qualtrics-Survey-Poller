@@ -6,48 +6,35 @@ const AWS = require("aws-sdk");
 // libs
 const fmt = require("./format");
 
-// config aws
+// setup AWS objects
 AWS.config.update({
   accessKeyId: process.env.AWS_ACCESS_KEY,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION
 });
-
-const DYNAMO_DB = new AWS.DynamoDB();
 const DOC_CLIENT = new AWS.DynamoDB.DocumentClient();
-
 const TABLE_TITLE = process.env.SURVEYS_DATA_TABLE;
-const TABLE_PARAMS = {
-  TableName: TABLE_TITLE,
-  KeySchema: [
-    { AttributeName: "survey_id", KeyType: "HASH" },
-  ],
-  AttributeDefinitions: [
-    { AttributeName: "survey_id", AttributeType: "S" },
-  ],
-  ProvisionedThroughput: {
-    ReadCapacityUnits: 5,
-    WriteCapacityUnits: 5
-  }
-};
 
-// Create survey tracking table
-// TODO: check to see if table exists ?
-async function createTable() {
-  try {
-    const data = await DYNAMO_DB.createTable(TABLE_PARAMS).promise();
-    return [null, data];
-  }
-  catch (e) {
-    return fmt.packError(e, "Unexpected error creating new SurveyTracker data-table.");
-  }
-}
 
 // Scane the survey tracking table for all entries
 // TODO: keep checking for more keys
 async function scanTable() {
+  const params = {
+    TableName: TABLE_TITLE,
+    KeySchema: [
+      { AttributeName: "survey_id", KeyType: "HASH" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "survey_id", AttributeType: "S" },
+    ],
+    ProvisionedThroughput: {
+      ReadCapacityUnits: 5,
+      WriteCapacityUnits: 5
+    }
+  };
+
   try {
-    const data = await DOC_CLIENT.scan(TABLE_PARAMS).promise();
+    const data = await DOC_CLIENT.scan(params).promise();
     return fmt.packSuccess(data);
   }
   catch (e) {
@@ -77,7 +64,6 @@ async function putItem(survey_name, survey_id, subject_tel, subject_id=null) {
 
       // default fields
       responses_today: 0,
-      tracking_status: "TRACKING",
       last_recorded_response_time: null
     },
     ConditionExpression: "attribute_not_exists( #sid )",

@@ -152,15 +152,6 @@ async function getLatestSurveyResponse(survey_id) {
 //------------------ ROUTES --------------------
 //----------------------------------------------
 
-// Create survey tracker table
-router.post("/createTable", async function(req, res){
-  return res.status(500).send({error:"Not allowed."});
-
-  const [db_err, ] = await dbHandlers.createTable();
-  if (db_err) res.status(500).send();
-  else res.status(200).send();
-});
-
 // attempt to track a new survey
 // If survey doesn't exist, returns 404
 // If DB insert fails, returns 500
