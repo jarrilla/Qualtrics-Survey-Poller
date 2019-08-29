@@ -5,8 +5,10 @@
 // -----------------------------------
 // -----------------------------------
 
+// packages
 const axios = require("axios");
 
+// libs
 const fmt = require("./format");
 
 // max number of api call attempts

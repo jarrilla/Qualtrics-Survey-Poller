@@ -12,6 +12,7 @@ const router = express.Router();
 const fmt = require("../../libs/format");
 const dbHandlers = require("../../libs/dbHandlers");
 const qualtricsApi = require("../../libs/qualtricsApiHandlers");
+const twilioApi = require("../../libs/twilioApiHandlers");
 
 //------------------ GLOBAL VARS ---------------
 //----------------------------------------------
@@ -22,7 +23,7 @@ const INTERVAL_MAP = new Map();
 
 // delay between interval triggers: default=10 minutes
 // TODO: load this from a DB value on server start?
-let INTERVAL_DELAY = 10*60*1000; // (10 minutes)
+let INTERVAL_DELAY = 10*1000; // (10 minutes) TODO: reset to 10 mins
 
 
 
@@ -71,11 +72,11 @@ async function untrackSurvey(survey_id) {
 }
 
 /**
- * TODO: poll survey responses to determine how many responses the subject has submitted that day
- * this should be re-set every day when a message is sent out with the previous day's progress
+ * TODO: reset recorded responses at the start of every day (the specific time can be a user setting?)
  * @param {string} survey_id Qualtrics survey ID
  */
 async function pollSurveyResponses(survey_id) {
+  console.log(`polling ${survey_id}`);
   try {
     // TODO:
     // - check db for last response we logged
@@ -107,8 +108,10 @@ async function pollSurveyResponses(survey_id) {
       const [update_err, ] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
       if (update_err) return [update_err];
 
-      // TODO:
-      // a new response was recorded send text:
+      console.log("sending text");
+
+      const [msg_err, ] = await twilioApi.sendMessage("Great job!", db_data.Item.subject_tel);
+      if (msg_err) return [msg_err];
       
       // TODO: add user setting for what message to send
     }
@@ -194,7 +197,7 @@ router.post("/untrackSurvey", async function(req, res) {
     const [db_err, db_data] = await dbHandlers.scanTable();
     if (db_err) return [db_err];
 
-    for (let i=0; i < db_data.Items; i++) {
+    for (let i=0; i < db_data.Items.length; i++) {
       const survey_id = db_data.Items[i].survey_id;
       INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
     }

@@ -34,7 +34,7 @@ app.use(bodyParser.urlencoded({extended:true}));
 
 // routes
 const indexRoutes = require("./app/routes/index");
-const apiRoutes = require("./app/routes/api/routes");
+const apiRoutes = require("./app/routes/api/apiRoutes");
 app.use("/", indexRoutes);
 app.use("/api", apiRoutes);
 
