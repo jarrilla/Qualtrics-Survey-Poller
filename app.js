@@ -6,7 +6,6 @@
 // - twilio api (for sending texts) =>> receive STOP requests
 // - node-schedule package (for scheduling texts)
 // TODO: implement settings for:
-// - automatically untrack inactive surveys
 //
 // TODO: add oauth w/ qualtrics
 // TODO: send invalid routes to 404 page w/ navbar
