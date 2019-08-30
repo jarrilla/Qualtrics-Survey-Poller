@@ -137,15 +137,33 @@ async function pollSurveyResponses(survey_id) {
       const [update_err, ] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
       if (update_err) return [update_err];
 
-      const [msg_err, ] = await twilioApi.sendMessage("Great job!", db_data.Item.subject_tel);
-      if (msg_err) return [msg_err];
-      
-      // TODO: add user setting for what message to send
+      if (SEND_ON_NEW_RESPONSE) {
+        const msg = makeMessageFromTemplate(NEW_RESPONSE_SMS_TEMPLATE, db_data.Item.subject_id);
+
+        const [msg_err, ] = await twilioApi.sendMessage(msg, db_data.Item.subject_tel);
+        if (msg_err) return [msg_err];
+      }
     }
   }
   catch (e) {
     fmt.packError(e, "Unepected error polling survey.");
   }
+}
+
+/**
+ * make a message from a template and optional parameters
+ * TODO: add more parameters
+ * @param {string} template the template to use
+ * @param {string} name subject name
+ */
+function makeMessageFromTemplate(template, name=null) {
+  let msg;
+  if (template.includes("%name%")) {
+    msg = template.replace("%name%", name||"");
+  }
+  else msg = template;
+
+  return msg;
 }
 
 /**
@@ -254,6 +272,7 @@ router.post("/untrackSurvey", async function(req, res) {
     if (sett_err) throw sett_err;
 
     const settings = sett_data.Item;
+    INTERVAL_DELAY = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
     SEND_ON_NEW_RESPONSE = settings.send_on_new;
     NEW_RESPONSE_SMS_TEMPLATE = settings.on_new_template;
     RESTRICT_SCHEDULE = settings.restrict_schedule;
