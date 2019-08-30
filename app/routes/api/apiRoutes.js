@@ -113,6 +113,15 @@ async function untrackSurvey(survey_id) {
  */
 async function pollSurveyResponses(survey_id) {
   try {
+    if (REMOVE_INACTIVE === true) {
+      const [e1,r1] = await qualtricsApi.getSurveyInfo(survey_id);
+      if (e1) return [e1];
+
+      const is_active = Boolean(r1.result.isActive);
+      if (!is_active) untrackSurvey(survey_id);
+      return;
+    }
+
     const [api_res, db_res] = [
       await getLatestSurveyResponse(survey_id),
       await dbHandlers.getLastRecordedResponseTime(survey_id)
