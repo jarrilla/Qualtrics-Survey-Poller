@@ -46,7 +46,9 @@
 
           <tr>
             <td><button class="remove-row-btn">-</button></td>
-            <td class="edit-cell"><button class="edit-cell-btn">Edit</button></td>
+            <%#<td class="edit-cell"><button class="edit-cell-btn">Edit</button></td>%>
+            <%# TODO: add edit functionality %>
+            <td></td>
             <td class="surveyName-cell">
               <%- item.survey_name %>
             </td>
@@ -97,6 +99,7 @@
   <!-- LISTENERS -->
   <script>
     // common doc elements
+    const getSurveyName = tr => $(tr).find(".surveyName-cell").first().text().trim();
     const getSurveyId = tr => $(tr).find(".surveyId-input").first().val().trim();
     const getSubjectTel = tr => $(tr).find(".subjectTel-input").first().val().trim();
     const getSubjectId = tr => $(tr).find(".subjectId-input").first().val().trim();
@@ -108,8 +111,7 @@
     const TrackSurvey_EventListener = tr => {
       const row_fields = getRowFields(tr);
 
-      // TODO: check input
-      alert("TODO: check input");
+      // TODO: validate input
 
       // cell elements
       const $name_el = $(tr).find("td.surveyName-cell").first();
@@ -151,8 +153,13 @@
     // event listener for "-" button
     // if row is being tracked...
     // survey will be removed from DB and all tracking intervals will be cleared
-    // TODO: remove empty rows without alert
     const RemoveRow_EventListener = tr => {
+      const survey_name = getSurveyName(tr);
+      if (!survey_name) {
+        $(tr).fadeOut("slow");
+        return;
+      }
+
       const user_res = confirm("Are you sure you want to remove this row? This action cannot be undone.");
       if (user_res === false) return;
       

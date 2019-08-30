@@ -99,7 +99,10 @@ async function untrackSurvey(survey_id) {
   if (db_err) return [db_err];
 
   const interval = INTERVAL_MAP.get(survey_id);
-  if (interval) clearInterval(interval);
+  if (interval) {
+    clearInterval(interval);
+    INTERVAL_MAP.delete(survey_id);
+  }
 
   return fmt.packSuccess(null);
 }
@@ -110,8 +113,6 @@ async function untrackSurvey(survey_id) {
  */
 async function pollSurveyResponses(survey_id) {
   try {
-    console.log("polling");
-
     const [api_res, db_res] = [
       await getLatestSurveyResponse(survey_id),
       await dbHandlers.getLastRecordedResponseTime(survey_id)
