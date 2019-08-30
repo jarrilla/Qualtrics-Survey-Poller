@@ -41,6 +41,8 @@ nav ul {
   position: fixed;
   top: 0;
   width: 100%;
+  border: 1px solid inherit;
+  border-radius: 5px;
 }
 
 nav li { float: left; }
@@ -53,12 +55,13 @@ nav li a {
   text-decoration: none;
 }
 
-nav li a:hover {
+nav li a:not(.active):hover {
   background-color: #ddd;
 }
 
 nav li a.active {
-  background-color: #008CBA;
+  background-color: #ff0000;
+  color: white;
 }
 
 /* styling for all pages */
@@ -68,5 +71,5 @@ body {
 
 div#main {
   padding: 16px;
-  margin-top: 30px;
+  margin-top: 35px;
 }
