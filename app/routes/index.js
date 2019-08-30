@@ -10,6 +10,17 @@ const dbHandlers = require("../libs/dbHandlers");
 
 // TODO: add oauth middleware too all routes
 
+//----------------------------------------------
+//------------------ HELPERS -------------------
+//----------------------------------------------
+async function handleSettingsPost() {
+
+}
+
+//----------------------------------------------
+//------------------ ROUTES --------------------
+//----------------------------------------------
+
 // get all existing table entries and pass them to index page
 router.get("/", async function(req, res) {
   const params = {
@@ -26,6 +37,14 @@ router.get("/", async function(req, res) {
 
 router.post("/", function(req, res) {
   res.redirect("index.ejs");
+});
+
+router.get("/settings", async function(req, res) {
+  const params = {
+    PageTitle: "SETTINGS"
+  };
+
+  res.render("settings.ejs", params);
 });
 
 
