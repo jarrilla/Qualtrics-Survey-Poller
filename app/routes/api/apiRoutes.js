@@ -23,7 +23,7 @@ const INTERVAL_MAP = new Map();
 
 // delay between interval triggers: default=10 minutes
 // TODO: load this from a DB value on server start?
-let INTERVAL_DELAY = 10*1000; // (10 minutes) TODO: reset to 10 mins
+let INTERVAL_DELAY = 10*60*1000; // (10 minutes)
 
 
 
@@ -77,12 +77,8 @@ async function untrackSurvey(survey_id) {
  * @param {string} survey_id Qualtrics survey ID
  */
 async function pollSurveyResponses(survey_id) {
-  console.log(`polling ${survey_id}`);
   try {
-    // TODO:
-    // - check db for last response we logged
-    // - check qualtrics api for latest response
-    // if latest response != last logged => log response & #responses-today +1
+    console.log("polling");
 
     const [api_res, db_res] = [
       await getLatestSurveyResponse(survey_id),
@@ -109,8 +105,6 @@ async function pollSurveyResponses(survey_id) {
       const [update_err, ] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
       if (update_err) return [update_err];
 
-      console.log("sending text");
-
       const [msg_err, ] = await twilioApi.sendMessage("Great job!", db_data.Item.subject_tel);
       if (msg_err) return [msg_err];
       
@@ -131,7 +125,6 @@ async function getLatestSurveyResponse(survey_id) {
     // first, we post the export request
     const [e1, export_req] = await qualtricsApi.createResponseExport(survey_id);
     if (e1) return [e1];
-    //console.log(export_req);
     const progress_id = export_req.result.progressId;
 
     // next we poll the progress until it's 100%
@@ -149,15 +142,45 @@ async function getLatestSurveyResponse(survey_id) {
     return fmt.packSuccess(latest_response);
 }
 
+/**
+ * Update every active interval with the new delay
+ * @param {number} new_delay the new delay (ms)
+ */
+function updateIntervalDelay(new_delay) {
+  new_delay = 10*1000;
+
+  INTERVAL_MAP.forEach((v,k) => {
+    clearInterval(v);
+    v = setInterval(pollSurveyResponses, new_delay, k);
+  });
+}
+
+async function updateAppSettings(bulk_settings) {
+  const [db_err, ] = await dbHandlers.updateStoredSettings(bulk_settings);
+  if (db_err) return [db_err];
+
+  const { PollInterval } = bulk_settings;
+  updateIntervalDelay(PollInterval * 60 * 1000);
+
+  return fmt.packSuccess(null);
+}
+
 //----------------------------------------------
-//------------------ ROUTES --------------------
+//---------------- API CALLS -------------------
 //----------------------------------------------
+
+/**
+ * Set the time between interval triggers
+ */
+router.post("/updateSettings", async function(req, res) {
+  const [err, ] = await updateAppSettings(req.body);
+  if (err) res.status(err.status_code).send({error:err.msg});
+  else res.status(200).send();
+})
 
 // attempt to track a new survey
 // If survey doesn't exist, returns 404
 // If DB insert fails, returns 500
-//
-// TODO: check if survey_id already exists, and ask user if they want to overwrite
 router.post("/trackSurvey", async function(req, res) {
   
   const { SurveyId, SubjectTel, SubjectId } = req.body;
@@ -176,7 +199,7 @@ router.post("/untrackSurvey", async function(req, res) {
 
   const [error, ] = await untrackSurvey(SurveyId);
   if (error) res.status(error.status_code).send({error:error.msg});
-  else res.status(200).send();
+  else res.status(200).send(true);
 });
 
 //----------------------------------------------

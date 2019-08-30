@@ -13,28 +13,27 @@ AWS.config.update({
   region: process.env.AWS_REGION
 });
 const DOC_CLIENT = new AWS.DynamoDB.DocumentClient();
-const TABLE_TITLE = process.env.SURVEYS_DATA_TABLE;
+const SURVEYS_TABLE = process.env.SURVEYS_DATA_TABLE;
 
 
 // Scane the survey tracking table for all entries
 // TODO: keep checking for more keys
 async function scanTable() {
   const params = {
-    TableName: TABLE_TITLE,
+    TableName: SURVEYS_TABLE,
     KeySchema: [
       { AttributeName: "survey_id", KeyType: "HASH" },
     ],
     AttributeDefinitions: [
       { AttributeName: "survey_id", AttributeType: "S" },
     ],
-    ProvisionedThroughput: {
-      ReadCapacityUnits: 5,
-      WriteCapacityUnits: 5
-    }
+    FilterExpression: "NOT (survey_id = :fe)",
+    ExpressionAttributeValues: { ":fe": "__APP_SETTINGS__" }
   };
 
   try {
     const data = await DOC_CLIENT.scan(params).promise();
+
     return fmt.packSuccess(data);
   }
   catch (e) {
@@ -51,7 +50,7 @@ async function scanTable() {
  */
 async function putItem(survey_name, survey_id, subject_tel, subject_id=null) {
   const params = {
-    TableName: TABLE_TITLE,
+    TableName: SURVEYS_TABLE,
     Item: {
       // lookup keys
       survey_id: survey_id,
@@ -97,7 +96,7 @@ async function putItem(survey_name, survey_id, subject_tel, subject_id=null) {
 async function removeItem(survey_id) {
   try {
     const params = {
-      TableName: TABLE_TITLE,
+      TableName: SURVEYS_TABLE,
       Key: {
         survey_id: survey_id
       }
@@ -120,7 +119,7 @@ async function removeItem(survey_id) {
 async function updateLastRecordedResponseTime(survey_id, new_date) {
   try {
     const params = {
-      TableName: TABLE_TITLE,
+      TableName: SURVEYS_TABLE,
       Key: { survey_id: survey_id },
       UpdateExpression: "set last_recorded_response_time = :d, responses_today = responses_today + :v",
       ExpressionAttributeValues: {
@@ -145,7 +144,7 @@ async function updateLastRecordedResponseTime(survey_id, new_date) {
 async function getLastRecordedResponseTime(survey_id) {
   try {
     const params = {
-      TableName: TABLE_TITLE,
+      TableName: SURVEYS_TABLE,
       Key: {
         survey_id: survey_id
       }
@@ -159,10 +158,59 @@ async function getLastRecordedResponseTime(survey_id) {
   }
 }
 
+/**
+ * 
+ * @param {*} bulk_settings all the settings to update. Verified in front-end
+ */
+async function updateStoredSettings(bulk_settings) {
+  const { RemoveInactive, PollInterval, SendOnNew, OnNewSms, ProgressSchedule, RestrictSchedule, RestrictedSchedule } = bulk_settings;
+
+  const params = {
+    TableName: SURVEYS_TABLE,
+    Key: { survey_id: "__APP_SETTINGS__" },
+    UpdateExpression: "set remove_inactive = :one, poll_interval = :two, send_on_new = :three, on_new_template = :four, progress_schedule = :five, restrict_schedule = :six, restricted_schedule= :seven",
+    ExpressionAttributeValues: {
+      ":one": Boolean(RemoveInactive),
+      ":two": Number(PollInterval),
+      ":three": Boolean(SendOnNew),
+      ":four": OnNewSms || " ",
+      ":five": ProgressSchedule,
+      ":six": Boolean(RestrictSchedule),
+      ":seven": RestrictedSchedule
+    },
+    ReturnValues: "UPDATED_NEW"
+  };
+
+  try {
+    const d = await DOC_CLIENT.update(params).promise();
+    return fmt.packSuccess(null);
+  }
+  catch (e) {
+    return fmt.packError(e, "Unexpected error updating settings in data-table.");
+  }
+}
+
+async function readStoredSettings() {
+  const params = {
+    TableName: SURVEYS_TABLE,
+    Key: { survey_id: "__APP_SETTINGS__" }
+  };
+
+  try {
+    const data = await DOC_CLIENT.get(params).promise();
+    return fmt.packSuccess(data);
+  }
+  catch (e) {
+    return fmt.packError(e, "Unexpected error reading app settings from data-table.");
+  }
+}
+
 module.exports = {
   scanTable: scanTable,
   putItem: putItem,
   getLastRecordedResponseTime: getLastRecordedResponseTime,
   updateLastRecordedResponseTime: updateLastRecordedResponseTime,
-  removeItem: removeItem
+  removeItem: removeItem,
+  updateStoredSettings: updateStoredSettings,
+  readStoredSettings: readStoredSettings
 };

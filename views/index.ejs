@@ -151,6 +151,7 @@
     // event listener for "-" button
     // if row is being tracked...
     // survey will be removed from DB and all tracking intervals will be cleared
+    // TODO: remove empty rows without alert
     const RemoveRow_EventListener = tr => {
       const user_res = confirm("Are you sure you want to remove this row? This action cannot be undone.");
       if (user_res === false) return;

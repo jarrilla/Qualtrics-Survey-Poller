@@ -44,6 +44,27 @@ router.get("/settings", async function(req, res) {
     PageTitle: "SETTINGS"
   };
 
+  // get app settings from DB
+  try {
+    const [db_err, db_data]  = await dbHandlers.readStoredSettings();
+    if (db_err) {
+      // TODO: handle.. tell user there was an error loading settings -> try again
+    }
+
+    const settings = db_data.Item;
+
+    params.RemoveInactive = settings.remove_inactive;
+    params.PollInterval = settings.poll_interval;
+    params.SendOnNew = settings.send_on_new;
+    params.OnNewTemplate = settings.on_new_template;
+    params.ProgressSchedule = settings.progress_schedule;
+    params.RestrictSchedule = settings.restrict_schedule;
+    params.RestrictedSchedule = settings.restricted_schedule;
+  }
+  catch (e) {
+    console.log(e);
+  }
+
   res.render("settings.ejs", params);
 });
 

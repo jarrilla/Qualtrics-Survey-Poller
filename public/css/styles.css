@@ -15,8 +15,9 @@ div.table-div, div.settings-table {
 
 /* styling for settings page */
 
-div.settings-container {
-  border: 1px solid black;
+div.setting-container:not(.last-container) {
+  padding-bottom: 5px;
+  border-bottom: 1px solid black;
 }
 
 /* make labels be on top of inputs */
@@ -41,6 +42,10 @@ div.setting-row, div.setting-subrow {
 
 div.setting-container {
   margin:15px 5px; 
+}
+
+div.setting-subrow textarea {
+  resize: none;
 }
 
 div.settings-parent :not(textarea) {
