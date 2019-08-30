@@ -53,15 +53,15 @@
               <%- item.survey_name %>
             </td>
 
-            <td>
+            <td class="surveyId-cell">
               <%-item.survey_id%>
             </td>
 
-            <td>
+            <td class="subjectTel-cell">
               <%-item.subject_tel%>
             </td>
 
-            <td>
+            <td class="subjectId-cell">
               <% if (item.subject_id) { %>
               <%-item.subject_id%>
               <% } %>
@@ -98,18 +98,28 @@
 
   <!-- LISTENERS -->
   <script>
+    const getTextFromField = function(tr, cell_class, is_input) {
+      let selector = cell_class;
+      if (is_input) selector += " input";
+
+      const $element = $(tr).find(selector).first();
+      const $text = is_input ? $element.val() : $element.text();
+      return $text.trim();
+    };
+
     // common doc elements
     const getSurveyName = tr => $(tr).find(".surveyName-cell").first().text().trim();
-    const getSurveyId = tr => $(tr).find(".surveyId-input").first().val().trim();
-    const getSubjectTel = tr => $(tr).find(".subjectTel-input").first().val().trim();
-    const getSubjectId = tr => $(tr).find(".subjectId-input").first().val().trim();
-    const getRowFields = tr => { return { SurveyId: getSurveyId(tr), SubjectTel: getSubjectTel(tr), SubjectId: getSubjectId(tr) }; };
+
+    const getSurveyId = (tr, is_input) => getTextFromField(tr, ".surveyId-cell", is_input);
+    const getSubjectTel = (tr, is_input) => getTextFromField(tr, ".subjectTel-cell", is_input);
+    const getSubjectId = (tr, is_input) => getTextFromField(tr, ".subjectId-cell", is_input);
+    const getRowFields = (tr, is_new_row) => { return { SurveyId: getSurveyId(tr, is_new_row), SubjectTel: getSubjectTel(tr, is_new_row), SubjectId: getSubjectId(tr, is_new_row) }; };
 
     // TrackSurvey_EventListener()
     // event listener for "Track" button
     // ask server to attempt to track the given survey if the ID is valid
     const TrackSurvey_EventListener = tr => {
-      const row_fields = getRowFields(tr);
+      const row_fields = getRowFields(tr, true);
 
       // TODO: validate input
 
@@ -183,9 +193,9 @@
           <td><button class="remove-row-btn">-</button></td>
           <td class="edit-cell"></td>
           <td class="surveyName-cell"></td>
-          <td><input type="text" class="surveyId-input"></td>
-          <td><input type="text" class="subjectTel-input"></td>
-          <td><input type="text" class="subjectId-input"></td>
+          <td class="surveyId-cell"><input type="text"></td>
+          <td class="subjectTel-cell"><input type="text"></td>
+          <td class="subjectId-cell"><input type="text"></td>
           <td class="row-status align-center"></td>
           <td><button class="check-row-btn">Track</button></td>
         </tr>`).appendTo("#tracker-tbody");
