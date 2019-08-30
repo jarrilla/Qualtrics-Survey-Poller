@@ -41,7 +41,7 @@ let RESTRICT_SCHEDULE;
 
 // start and end times for when twilio is allowed to send SMS
 // init: loads {Start, End}
-const RESTRICTED_SCHEDULE = {}
+const RESTRICTED_SCHEDULE = {};
 
 // (boolean) if set to true, if a survey is inactive when polling, untrack it & remove it
 // TODO:
@@ -51,7 +51,7 @@ let REMOVE_INACTIVE;
 // init: fills { Days [boolean]x7, Time: }
 // Monday=0, Tuesday=1, etc...
 // on day marked as true, send progress report when time=Time
-const PROGRESS_SCHEDULE = {}
+const PROGRESS_SCHEDULE = {};
 
 
 //----------------------------------------------
