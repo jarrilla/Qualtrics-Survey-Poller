@@ -14,6 +14,16 @@ div.table-div, div.settings-table {
 }
 
 /* styling for settings page */
+
+div.settings-container {
+  border: 1px solid black;
+}
+
+/* make labels be on top of inputs */
+.schedule-row label {
+  display: block;
+}
+
 div.settings-actions {
   padding: 10px 10px;
 }
@@ -24,7 +34,7 @@ div.settings-table {
   width: 600px;
 }
 
-div.setting-row {
+div.setting-row, div.setting-subrow {
   display: flex;
   justify-content: space-between;
 }
@@ -33,7 +43,7 @@ div.setting-container {
   margin:15px 5px; 
 }
 
-div.setting-container :not(textarea) {
+div.settings-parent :not(textarea) {
   user-select: none;
 }
 
@@ -67,10 +77,11 @@ button {
   outline: 0;
   transition: transform 0.25s;
   cursor: pointer;
+  user-select: none;
 }
 
 button:hover {
-  transform: scale(1.15);
+  transform: scale(1.1);
 }
 
 tbody tr:hover :not(button):not(input) {
