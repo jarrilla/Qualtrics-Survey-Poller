@@ -170,14 +170,14 @@
     $("#new-survey-btn").click(function() {
       // make a new row and append it to tracker table
       const $new_row = $(`<tr>
-          <td><button class="remove-row-btn">-</button></td>
+          <td><button class="btn-cell remove-row-btn">-</button></td>
           <td class="edit-cell"></td>
           <td class="surveyName-cell"></td>
           <td><input type="text" class="surveyId-input"></td>
           <td><input type="text" class="subjectTel-input"></td>
           <td><input type="text" class="subjectId-input"></td>
           <td class="row-status align-center"></td>
-          <td><button class="check-row-btn">Track</button></td>
+          <td><button class="btn-cell check-row-btn">Track</button></td>
         </tr>`).appendTo("#tracker-tbody");
 
       const $remove_btn = $($new_row).find("button.remove-row-btn").first();

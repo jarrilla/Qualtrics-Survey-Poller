@@ -4,16 +4,40 @@
   color: white;
 }
 
-table button.round-btn {
-  border-radius: 50%;
-  transition: transform 0.25s;
+/* basic styling for table elements */
+table {
+  width: 900px;
+  border: 1px solid black;
+  border-collapse: collapse;
+
+  /* center the table */
+  margin-left: auto;
+  margin-right: auto;
 }
 
-table button.round-btn:hover {
-  transform: scale(1.25);
+table td {
+  padding: 2px auto;
 }
 
-table button.btn-nice { border-radius: 2px; }
+table button {
+  background-color: #ccc;
+  color: white;
+  border: 1px solid black;
+  border-radius: 5px;
+  outline: 0;
+  transition: transform 0.5s;
+  cursor: pointer;
+}
+
+table button:hover {
+  transform: scale(1.15);
+}
+
+tbody tr:hover :not(.btn-cell):not(input) {
+  background-color: #ffb3b3;
+}
+
+/* other stuff */
 
 .align-center { text-align: center; }
 
@@ -72,4 +96,5 @@ body {
 div#main {
   padding: 16px;
   margin-top: 35px;
+  text-align: center;
 }
