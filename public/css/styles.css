@@ -4,15 +4,28 @@
   color: white;
 }
 
+/* center the table in page */
+div.table-div {
+  border: 1px solid black;
+  border-radius: 5px;
+  width: 900px;
+
+  margin-left: auto;
+  margin-right: auto;
+}
+
+thead, tfoot, tbody button {
+  user-select: none;
+}
+
 /* basic styling for table elements */
 table {
   width: 900px;
-  border: 1px solid black;
   border-collapse: collapse;
+}
 
-  /* center the table */
-  margin-left: auto;
-  margin-right: auto;
+tbody :not(button) {
+  font-size: 14px;
 }
 
 table td {
@@ -33,7 +46,7 @@ table button:hover {
   transform: scale(1.15);
 }
 
-tbody tr:hover :not(.btn-cell):not(input) {
+tbody tr:hover :not(button):not(input) {
   background-color: #ffb3b3;
 }
 

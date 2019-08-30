@@ -23,62 +23,64 @@
   <% include ./ejs_partials/navbar.ejs %>
 
   <div id="main">
-    <table class="content-table">
-      <thead>
-        <tr>
-          <th><!-- remove row --></th>
-          <th><!-- edit row --></th>
-          <th>Survey Name</th>
-          <th>Survey Id</th>
-          <th>Phone #</th>
-          <th>(opt) Identifier</th>
-          <th><!-- query status --></th>
-          <th><!-- track button --></th>
-        </tr>
-      </thead>
-      <tbody id="tracker-tbody">
-        <%
-        if (locals.ExistingItems) {
-          for(let i=0; i < ExistingItems.length; i++) {
-            const item = ExistingItems[i];
-        %>
+    <div class="table-div">
+      <table class="content-table">
+        <thead>
+          <tr>
+            <th><!-- remove row --></th>
+            <th><!-- edit row --></th>
+            <th>Survey Name</th>
+            <th>Survey Id</th>
+            <th>Phone #</th>
+            <th>(opt) Identifier</th>
+            <th><!-- query status --></th>
+            <th><!-- track button --></th>
+          </tr>
+        </thead>
+        <tbody id="tracker-tbody">
+          <%
+          if (locals.ExistingItems) {
+            for(let i=0; i < ExistingItems.length; i++) {
+              const item = ExistingItems[i];
+          %>
 
-        <tr>
-          <td><button class="remove-row-btn">-</button></td>
-          <td class="edit-cell"><button class="edit-cell-btn">Edit</button></td>
-          <td class="surveyName-cell">
-            <%- item.survey_name %>
-          </td>
+          <tr>
+            <td><button class="remove-row-btn">-</button></td>
+            <td class="edit-cell"><button class="edit-cell-btn">Edit</button></td>
+            <td class="surveyName-cell">
+              <%- item.survey_name %>
+            </td>
 
-          <td>
-            <input type="text" class="surveyId-input" value="<%-item.survey_id%>">
-          </td>
+            <td>
+              <%-item.survey_id%>
+            </td>
 
-          <td>
-            <input type="text" class="subjectTel-input" value="<%-item.subject_tel%>">
-          </td>
+            <td>
+              <%-item.subject_tel%>
+            </td>
 
-          <td>
-            <input type="text" class="subjectId-input"
-            <% if (item.subject_id) { %> value="<%-item.subject_id%>" <% } %>
-            >
-          </td>
+            <td>
+              <% if (item.subject_id) { %>
+              <%-item.subject_id%>
+              <% } %>
+            </td>
 
-          <td class="row-status tracking">&#10004;</td>
-          <td></td>
-        </tr>
+            <td class="row-status tracking">&#10004;</td>
+            <td></td>
+          </tr>
 
-        <% }} %>
+          <% }} %>
 
-      </tbody>
-      <tfoot id="tracker-tfoot">
-        <tr>
-          <td colspan="8">
-            <button id="new-survey-btn" class="btn-nice">New Entry</button>
-          </td>
-        </tr>
-      </tfoot>
-    </table>
+        </tbody>
+        <tfoot id="tracker-tfoot">
+          <tr>
+            <td colspan="8">
+              <button id="new-survey-btn">New Entry</button>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   </div>
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
@@ -170,14 +172,14 @@
     $("#new-survey-btn").click(function() {
       // make a new row and append it to tracker table
       const $new_row = $(`<tr>
-          <td><button class="btn-cell remove-row-btn">-</button></td>
+          <td><button class="remove-row-btn">-</button></td>
           <td class="edit-cell"></td>
           <td class="surveyName-cell"></td>
           <td><input type="text" class="surveyId-input"></td>
           <td><input type="text" class="subjectTel-input"></td>
           <td><input type="text" class="subjectId-input"></td>
           <td class="row-status align-center"></td>
-          <td><button class="btn-cell check-row-btn">Track</button></td>
+          <td><button class="check-row-btn">Track</button></td>
         </tr>`).appendTo("#tracker-tbody");
 
       const $remove_btn = $($new_row).find("button.remove-row-btn").first();
