@@ -12,7 +12,9 @@ const dbHandlers = require("../libs/dbHandlers");
 
 // get all existing table entries and pass them to index page
 router.get("/", async function(req, res) {
-  const params = {};
+  const params = {
+    PageTitle: "HOME"
+  };
 
   const [err, data] = await dbHandlers.scanTable();
 

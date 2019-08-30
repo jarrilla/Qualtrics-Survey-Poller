@@ -1,11 +1,17 @@
 <nav>
   <ul>
     <li>
-      <a href="/">Home</a>
+      <a
+        href="/"
+        <% if (locals.PageTitle=="HOME") { %> class="active" <% } %>
+      >Home</a>
     </li>
 
     <li>
-      <a href="/settings">Settings</a>
+      <a
+        href="/settings"
+        <% if (locals.PageTitle=="SETTINGS") { %> class="active" <% } %>
+      >Home</a>
     </li>
   </ul>
 </nav>
