@@ -156,10 +156,16 @@ function updateIntervalDelay(new_delay) {
 }
 
 async function updateAppSettings(bulk_settings) {
+  // sanitize polling interval
+  let { PollInterval } = bulk_settings;
+  if (PollInterval < 10) {
+    PollInterval = 10;
+    bulk_settings.PollInterval = 10;
+  }
+
   const [db_err, ] = await dbHandlers.updateStoredSettings(bulk_settings);
   if (db_err) return [db_err];
 
-  const { PollInterval } = bulk_settings;
   updateIntervalDelay(PollInterval * 60 * 1000);
 
   return fmt.packSuccess(null);

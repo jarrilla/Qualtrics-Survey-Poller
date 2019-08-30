@@ -52,7 +52,7 @@
 
           <div class="setting-subrow">
             
-            <textarea id="after-response-textarea" rows="4" cols="80" placeholder="Example: Great job %name%!"
+            <textarea id="after-response-textarea" rows="4" cols="80" placeholder="Template example: Great job %name%!"
               <% if (locals.SendOnNew == false) { %> class="hidden" <% } %>
             ><%-locals.OnNewTemplate.trim()%></textarea>
           </div>
@@ -61,7 +61,8 @@
         <!-- Progress SMS schedule -->
         <div class="setting-container">
           <%
-          const checked_days = locals.ProgressSchedule ? ProgressSchedule.Days.map(x => JSON.parse(x)) : [false, false, false, false, false, false, false];
+          const checked_days = locals.ProgressSchedule ?
+            ProgressSchedule.Days.map(x => JSON.parse(x)) : [false, false, false, false, false, false, false];
           %>
 
           <div class="setting-row">
