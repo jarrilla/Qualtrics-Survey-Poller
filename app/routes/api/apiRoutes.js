@@ -21,10 +21,42 @@ const twilioApi = require("../../libs/twilioApiHandlers");
 // keys: survey_id; vals: Interval
 const INTERVAL_MAP = new Map();
 
+//----------------------------------------------
+// GLOBALS that are infrequently updated so we store in memory
+//----------------------------------------------
+
 // delay between interval triggers: default=10 minutes
 // TODO: load this from a DB value on server start?
-let INTERVAL_DELAY = 10*60*1000; // (10 minutes)
+let INTERVAL_DELAY; // (10 minutes)
 
+// (boolean) if true, send a new sms every time a new response is recorded
+// uses NEW_RESPONSE_SMS_TEMPLATE
+let SEND_ON_NEW_RESPONSE;
+
+// template for sms messages sent after new responses
+let NEW_RESPONSE_SMS_TEMPLATE;
+
+// (boolean) if true, use RESTRICTED_SCHEDULE
+let RESTRICT_SCHEDULE;
+
+// start and end times for when twilio is allowed to send SMS
+// init: loads {Start, End}
+const RESTRICTED_SCHEDULE = {}
+
+// (boolean) if set to true, if a survey is inactive when polling, untrack it & remove it
+// TODO:
+let REMOVE_INACTIVE;
+
+// schedule of when to send progress reports
+// init: fills { Days [boolean]x7, Time: }
+// Monday=0, Tuesday=1, etc...
+// on day marked as true, send progress report when time=Time
+const PROGRESS_SCHEDULE = {}
+
+
+//----------------------------------------------
+//----------------------------------------------
+//----------------------------------------------
 
 
 // TODO
@@ -147,12 +179,13 @@ async function getLatestSurveyResponse(survey_id) {
  * @param {number} new_delay the new delay (ms)
  */
 function updateIntervalDelay(new_delay) {
-  new_delay = 10*1000;
+  INTERVAL_DELAY = new_delay;
 
   INTERVAL_MAP.forEach((v,k) => {
     clearInterval(v);
     v = setInterval(pollSurveyResponses, new_delay, k);
   });
+
 }
 
 async function updateAppSettings(bulk_settings) {
@@ -194,7 +227,6 @@ router.post("/trackSurvey", async function(req, res) {
   const [queue_err, queue_res] = await trackNewSurvey(SurveyId, SubjectTel, SubjectId);
   if (queue_err) res.status(queue_err.status_code).send({error:queue_err.msg});
   else res.status(200).send(queue_res);
-
 });
 
 /**
@@ -217,8 +249,24 @@ router.post("/untrackSurvey", async function(req, res) {
  */
 (async function _initTracking_() {
   try {
+    // load settings into memory
+    const [sett_err, sett_data] = await dbHandlers.readStoredSettings();
+    if (sett_err) throw sett_err;
+
+    const settings = sett_data.Item;
+    SEND_ON_NEW_RESPONSE = settings.send_on_new;
+    NEW_RESPONSE_SMS_TEMPLATE = settings.on_new_template;
+    RESTRICT_SCHEDULE = settings.restrict_schedule;
+    RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[0];
+    RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[1];
+    REMOVE_INACTIVE = settings.remove_inactive;
+    PROGRESS_SCHEDULE.Days = settings.progress_schedule.Days;
+    PROGRESS_SCHEDULE.Time = settings.progress_schedule.Time;
+
+
+    // start tracking all existing surveys
     const [db_err, db_data] = await dbHandlers.scanTable();
-    if (db_err) return [db_err];
+    if (db_err) throw db_err;
 
     for (let i=0; i < db_data.Items.length; i++) {
       const survey_id = db_data.Items[i].survey_id;
@@ -227,7 +275,8 @@ router.post("/untrackSurvey", async function(req, res) {
 
   }
   catch (e) {
-
+    // TODO: queue function to run again
+    console.log(e);
   }
 })();
 
