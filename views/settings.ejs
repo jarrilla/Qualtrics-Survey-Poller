@@ -13,6 +13,79 @@
   <!-- NAVBAR GOES HERE -->
   <% include ./ejs_partials/navbar.ejs %>
 
+  <div id="main">
+    <div class="settings-parent">
+      <div class="settings-table">
+        <div class="setting-container">
+          <div class="setting-row">
+            <span>
+              Automatically stop tracking inactive surveys
+            </span>
+            <input type="checkbox" checked>
+          </div>
+        </div>
+
+        <div class="setting-container">
+          <div class="setting-row">
+            <span>
+              Send text after every new response ($0.0075/msg)
+            </span>
+            <input id="send-text-toggle" type="checkbox">
+          </div>
+
+          <div class="setting-subrow">
+            <textarea id="after-response-textarea" class="hidden" rows="4" cols="60" placeholder="Example: Great job %name%!"></textarea>
+          </div>
+        </div>
+
+        <div class="setting-container">
+          <div class="setting-row">
+            <span>
+              Only send texts between...
+            </span>
+            <input id="allowed-time-toggle" type="checkbox">
+          </div>
+
+          <div class="setting-subrow">
+            <div id="allowed-range" class="hidden">
+              <input id="allowed-time-start" type="time">
+              <span>and</span>
+              <input id="allowed-time-end" type="time">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button>Cancel</button>
+        <button>Apply</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JQUERY LIB -->
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>  
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+  <!-- LISTENERS -->
+  <script>
+    // toggle text response show/hide
+    $("#send-text-toggle").change(function() {
+      if (this.checked) {
+        $("#after-response-textarea").removeClass("hidden");
+      }
+      else {
+        $("#after-response-textarea").addClass("hidden");
+      }
+    });
+
+    // toggle allowed schedule show/hide
+    $("#allowed-time-toggle").change(function() {
+      if (this.checked) {
+        $("#allowed-range").removeClass("hidden");
+      }
+      else {
+        $("#allowed-range").addClass("hidden");
+      }
+    });
+  </script>
 </body>

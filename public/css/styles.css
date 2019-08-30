@@ -4,14 +4,41 @@
   color: white;
 }
 
-/* center the table in page */
-div.table-div {
+/* center tables in page */
+div.table-div, div.settings-table {
   border: 1px solid black;
   border-radius: 5px;
-  width: 900px;
 
   margin-left: auto;
   margin-right: auto;
+}
+
+/* styling for settings page */
+div.settings-actions {
+  padding: 10px 10px;
+}
+
+div.settings-table {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  width: 600px;
+}
+
+div.setting-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+div.setting-container {
+  margin:15px 5px; 
+}
+
+div.setting-container :not(textarea) {
+  user-select: none;
+}
+
+div.table-div {
+  width: 900px;
 }
 
 thead, tfoot, tbody button {
@@ -32,17 +59,17 @@ table td {
   padding: 2px auto;
 }
 
-table button {
+button {
   background-color: #ccc;
   color: white;
   border: 1px solid black;
   border-radius: 5px;
   outline: 0;
-  transition: transform 0.5s;
+  transition: transform 0.25s;
   cursor: pointer;
 }
 
-table button:hover {
+button:hover {
   transform: scale(1.15);
 }
 
@@ -110,4 +137,9 @@ div#main {
   padding: 16px;
   margin-top: 35px;
   text-align: center;
+}
+
+/* hide elements */
+.hidden {
+  display: none;
 }
