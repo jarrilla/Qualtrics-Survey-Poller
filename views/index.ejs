@@ -121,7 +121,19 @@
     const TrackSurvey_EventListener = tr => {
       const row_fields = getRowFields(tr, true);
 
-      // TODO: validate input
+      // check that suvey_id isn't empty
+      if (!row_fields.SurveyId) {
+        alert("Survey Id cannot be empty!");
+        return;
+      }
+
+      // check phone number
+      const phone_num = row_fields.SubjectTel;
+      const phone_match = phone_num.match(/\d{10}/);
+      if (!phone_match) {
+        alert("Please enter a valid phone number!");
+        return;
+      }
 
       // cell elements
       const $name_el = $(tr).find("td.surveyName-cell").first();
@@ -144,7 +156,14 @@
               $(this).html("&#10004;").show("slow");
               $($track_btn).fadeOut("slow");
               $($status_el).removeClass("not-tracking").addClass("tracking");
+
+              // replace inputs
+              $(tr).find(".surveyId-cell input").first().replaceWith( data.survey_id );
+              $(tr).find(".subjectTel-cell input").first().replaceWith( data.subject_tel );
+              $(tr).find(".subjectId-cell input").first().replaceWith( data.subject_id || "" );
             });
+
+            // TODO: remove inputs
           },
           error: function(jqXHR) {
             $($status_el).hide("slow", function() {

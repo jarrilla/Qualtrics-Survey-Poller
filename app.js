@@ -3,17 +3,11 @@
 // app.js
 // TODO: document
 // TODO: implement the following
-// - twilio api (for sending texts)
+// - twilio api (for sending texts) =>> receive STOP requests
 // - node-schedule package (for scheduling texts)
-// TODO: add settings for:
-// - when to send messages
-// - what should messages contain
+// TODO: implement settings for:
 // - automatically untrack inactive surveys
 //
-// TODO: load all tracker Intervals on server re-start
-// 
-// TODO: navigation banner ejs partial
-// TODO: setup aws + dynamo freetier
 // TODO: add oauth w/ qualtrics
 // TODO: send invalid routes to 404 page w/ navbar
 
