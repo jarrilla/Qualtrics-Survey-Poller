@@ -160,7 +160,6 @@ async function getLastRecordedResponseTime(survey_id) {
 }
 
 module.exports = {
-  createTable: createTable,
   scanTable: scanTable,
   putItem: putItem,
   getLastRecordedResponseTime: getLastRecordedResponseTime,

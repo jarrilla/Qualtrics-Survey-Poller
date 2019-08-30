@@ -19,15 +19,10 @@
 
 </head>
 <body>
-  <div>
-    TODO: nav bar
-  </div>
+  <!-- NAVBAR GOES HERE -->
+  <% include ./ejs_partials/navbar.ejs %>
 
-  <div>
-    <button id="create-tab-btn">Create Table</button>
-  </div>
-
-  <div>
+  <div id="main">
     <table class="content-table">
       <thead>
         <tr>
@@ -190,18 +185,6 @@
 
       const $track_btn = $($new_row).find("button.check-row-btn").first();
       $($track_btn).click(function(){ TrackSurvey_EventListener( $new_row ); });
-    });
-
-    // create table.. may delete
-    // TODO: remove this button once a table is created
-    $("#create-tab-btn").click(function() {
-      $.ajax({
-        url: "/api/createTable",
-        type: "POST",
-        success: function(res) {
-          console.log(res);
-        }
-      });
     });
   </script>
 </body>
