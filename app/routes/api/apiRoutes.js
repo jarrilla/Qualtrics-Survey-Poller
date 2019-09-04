@@ -165,13 +165,6 @@ async function pollSurveyResponses(survey_id) {
       const num_logged_responses = Number(update_res.Attributes.responses_today);
 
       if (SEND_ON_NEW_RESPONSE) {
-        /* DEPRECATED ---
-        const msg = makeMessageFromTemplate(NEW_RESPONSE_SMS_TEMPLATE, db_data.Item.subject_id);
-
-        const [msg_err, ] = await twilioApi.sendMessage(msg, db_data.Item.subject_tel);
-        if (msg_err) return [msg_err];
-        */
-
         const [msg_err, ] = await sendProgressMessage(num_logged_responses, db_data.Item.subject_tel);
         if (msg_err) return [msg_err];
       }
@@ -349,7 +342,7 @@ router.post("/untrackSurvey", async function(req, res) {
     PROGRESS_SCHEDULE.Time = settings.progress_schedule.Time;
 
     // OVERRIDE INTERVAL_DELAY for DEUBG
-    if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
+    //if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
 
     // start tracking all existing surveys
     const [db_err, db_data] = await dbHandlers.scanTable();
