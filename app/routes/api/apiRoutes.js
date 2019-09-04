@@ -191,8 +191,8 @@ async function sendProgressMessage(total_responses, subject_tel) {
   // function should not have been called with 0 responses, exit
   if (total_responses == 0) return;
 
-  // which index to use from rewards arrays, max 7
-  const reward_arrays_index = (total_responses < 8) ? total_responses-1 : 8;
+  // which index to use from rewards arrays
+  const reward_arrays_index = (total_responses <= 8) ? total_responses-1 : 8;
 
   // arary index for next survey
   // if we haven't logged 8 reponses yet, next survey will be worth more, otherwise it'll be worth 0
@@ -200,13 +200,13 @@ async function sendProgressMessage(total_responses, subject_tel) {
 
   // message to send
   const msg = ((total_responses == 1) ?
-    `You have completed 1 survey, good job! You have earned $${PER_SURVEY_REWARD[0]}.` :
-    `You have completed ${total_responses} surveys! You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey, for a total of $${TOTAL_REWARD[reward_arrays_index]} so far today.`)
+    `You have earned $${PER_SURVEY_REWARD[0]}.` :
+    `You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey, for a total of $${TOTAL_REWARD[reward_arrays_index]} so far today.`)
     + ` The next survey is worth $${PER_SURVEY_REWARD[next_reward_arrays_index]}.`;
 
   // now, send the message
   try {
-    const [msg_err, res] = await twilioApi.sendMessage(msg, subject_tel);
+    const [msg_err, ] = await twilioApi.sendMessage(msg, subject_tel);
     if (msg_err) return [msg_err];
 
     return fmt.packSuccess(null);
