@@ -119,8 +119,10 @@ async function pollSurveyResponses(survey_id) {
       if (e1) return [e1];
 
       const is_active = Boolean(r1.result.isActive);
-      if (!is_active) untrackSurvey(survey_id);
-      return;
+      if (!is_active) {
+        untrackSurvey(survey_id);
+        return;
+      }
 
       // TODO: (emit to browser??)
     }
