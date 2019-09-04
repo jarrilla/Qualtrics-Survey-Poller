@@ -147,8 +147,8 @@ async function pollSurveyResponses(survey_id) {
     if (api_err) return [api_err];
     if (db_err) return [db_err];
 
-    // no responses yet, do nothing
-    if (!api_data) return;
+    // no responses yet, do nothing || no_db entry anymore
+    if (!api_data || !db_data) return;
 
     // determine if we're going to update db object
     let do_update = false;
@@ -240,6 +240,8 @@ async function getLatestSurveyResponse(survey_id) {
     const [e2, export_prog] = await qualtricsApi.getResponseExportProgress(survey_id, progress_id);
     if (e2) return [e2];
     const file_id = export_prog.result.fileId;
+
+    if (!file_id) return fmt.packError(Error(`Invalid fileId for survey ${survey_id} and progressId ${progress_id}`), "Error reading fileId.");
 
     // finally, we poll the file for data
     const [e3, export_file] = await qualtricsApi.getResponseExportFile(survey_id, file_id);
