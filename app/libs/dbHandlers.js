@@ -1,17 +1,24 @@
 // app/libs/dbHandlers.js
 // All of our DynamoDB handlers & table setup
 
+// setup different if in debug
+const IS_DEBUG = (process.env.NODE_ENV == "debug");
+
 const AWS = require("aws-sdk");
 
 // libs
 const fmt = require("./format");
 
 // setup AWS objects
-AWS.config.update({
+const __AWS_CONFIG__ = IS_DEBUG ? {
+  region: process.env.AWS_REGION,
+  endpoint: "http://localhost:8000"
+} : {
   accessKeyId: process.env.AWS_ACCESS_KEY,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION
-});
+};
+AWS.config.update(__AWS_CONFIG__);
 const DOC_CLIENT = new AWS.DynamoDB.DocumentClient();
 const SURVEYS_TABLE = process.env.SURVEYS_DATA_TABLE;
 

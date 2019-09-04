@@ -3,6 +3,9 @@
 // api/routes.js
 // all API routes
 
+// setup different if in debug
+const IS_DEBUG = (process.env.NODE_ENV == "debug");
+
 // imports
 const axios = require("axios");
 const express = require("express");
@@ -52,6 +55,12 @@ let REMOVE_INACTIVE;
 // Monday=0, Tuesday=1, etc...
 // on day marked as true, send progress report when time=Time
 const PROGRESS_SCHEDULE = {};
+
+// rewards for completing surveys
+// the last index of each is used for when more than 8 surveys are completed
+// so surveys past 8 reward $0 => total is still $28
+const PER_SURVEY_REWARD = ["1", "1.50", "2", "2.50", "3", "4", "6", "8", "0"];
+const TOTAL_REWARD = ["1", "2.50", "4.50", "7", "10", "14", "20", "28", "28"];
 
 
 //----------------------------------------------
@@ -149,19 +158,61 @@ async function pollSurveyResponses(survey_id) {
 
     // proceed to update
     if (do_update) {
-      const [update_err, ] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
+      const [update_err, update_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
       if (update_err) return [update_err];
 
+      // get number of logged responses from db result
+      const num_logged_responses = Number(update_res.Attributes.responses_today);
+
       if (SEND_ON_NEW_RESPONSE) {
+        /* DEPRECATED ---
         const msg = makeMessageFromTemplate(NEW_RESPONSE_SMS_TEMPLATE, db_data.Item.subject_id);
 
         const [msg_err, ] = await twilioApi.sendMessage(msg, db_data.Item.subject_tel);
+        if (msg_err) return [msg_err];
+        */
+
+        const [msg_err, ] = await sendProgressMessage(num_logged_responses, db_data.Item.subject_tel);
         if (msg_err) return [msg_err];
       }
     }
   }
   catch (e) {
     fmt.packError(e, "Unepected error polling survey.");
+  }
+}
+
+
+/**
+ * Send a progress message to the specified phone number
+ * @param {number} total_responses number of recorder responses today
+ */
+async function sendProgressMessage(total_responses, subject_tel) {
+  // function should not have been called with 0 responses, exit
+  if (total_responses == 0) return;
+
+  // which index to use from rewards arrays, max 7
+  const reward_arrays_index = (total_responses < 8) ? total_responses-1 : 8;
+
+  // arary index for next survey
+  // if we haven't logged 8 reponses yet, next survey will be worth more, otherwise it'll be worth 0
+  const next_reward_arrays_index = (reward_arrays_index < 8) ? reward_arrays_index+1 : reward_arrays_index;
+
+  // message to send
+  const msg = ((total_responses == 1) ?
+    `You have completed 1 survey, good job! You have earned $${PER_SURVEY_REWARD[0]}.` :
+    `You have completed ${total_responses} surveys! You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey, for a total of $${TOTAL_REWARD[reward_arrays_index]} so far today.`)
+    + ` The next survey is worth $${PER_SURVEY_REWARD[next_reward_arrays_index]}.`;
+
+  // now, send the message
+  try {
+    const [msg_err, res] = await twilioApi.sendMessage(msg, subject_tel);
+    if (msg_err) return [msg_err];
+
+    return fmt.packSuccess(null);
+  }
+  catch (e) {
+    return fmt.packError(e, "Unexpected error sending twilio message.");
   }
 }
 
@@ -201,7 +252,7 @@ async function getLatestSurveyResponse(survey_id) {
     const [e3, export_file] = await qualtricsApi.getResponseExportFile(survey_id, file_id);
     if (e3) return [e3];
     const responses = export_file.responses;
-    const latest_response = responses.length ? responses[0] : null;
+    const latest_response = responses.length ? responses[ responses.length-1 ] : null;
 
     // done
     return fmt.packSuccess(latest_response);
@@ -297,6 +348,8 @@ router.post("/untrackSurvey", async function(req, res) {
     PROGRESS_SCHEDULE.Days = settings.progress_schedule.Days;
     PROGRESS_SCHEDULE.Time = settings.progress_schedule.Time;
 
+    // OVERRIDE INTERVAL_DELAY for DEUBG
+    if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
 
     // start tracking all existing surveys
     const [db_err, db_data] = await dbHandlers.scanTable();
