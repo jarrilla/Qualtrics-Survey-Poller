@@ -107,7 +107,7 @@ async function addLatestResponseToNewSurvey(survey_id) {
     if (err) return [err];
     if (!res) return fmt.packSuccess(false);
 
-    const latest_response_time = res.values.endDate;
+    const latest_response_time = new Date(res.values.endDate);
     const [db_err, db_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest_response_time);
     if (db_err) return [err];
     if (!db_res) return fmt.packSuccess(false);
