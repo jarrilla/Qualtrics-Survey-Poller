@@ -23,8 +23,8 @@ async function sendMail(error, msg) {
   const mail_opts = {
     from: sender_addr,
     to: dev_addr,
-    subject: error,
-    text: msg
+    subject: msg,
+    text: error
   };
 
   try {

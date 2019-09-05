@@ -94,9 +94,29 @@ async function trackNewSurvey(survey_id, subject_tel, subject_id) {
   const [db_err, db_res] = await dbHandlers.putItem(survey_name, ...arguments);
   if (db_err) return [db_err];
 
+  await addLatestResponseToNewSurvey(survey_id);
+
   INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
 
   return fmt.packSuccess(db_res);
+}
+
+async function addLatestResponseToNewSurvey(survey_id) {
+  try {
+    const [err, res] = await getLatestSurveyResponse(survey_id);
+    if (err) return [err];
+    if (!res) return fmt.packSuccess(false);
+
+    const latest_response_time = res.values.endDate;
+    const [db_err, db_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest_response_time);
+    if (db_err) return [err];
+    if (!db_res) return fmt.packSuccess(false);
+
+    return fmt.packSuccess(true);
+  }
+  catch (e) {
+    return fmt.packError(e, "Unexpected error adding latest response to new survey tracker.");
+  }
 }
 
 /**
