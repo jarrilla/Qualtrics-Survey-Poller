@@ -20,11 +20,13 @@ const dev_addr = process.env.DEV_ADDR;
 
 // send error mail
 async function sendMail(error, msg) {
+  const title = "CMU.Pysch.Qualtrics.SurveyTracker Error -- " + msg;
+
   const mail_opts = {
     from: sender_addr,
     to: dev_addr,
-    subject: msg,
-    text: error
+    subject: title,
+    text: error.toString()
   };
 
   try {
