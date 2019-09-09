@@ -122,19 +122,24 @@ async function removeItem(survey_id) {
  * and increment .responses_today+1
  * @param {string} survey_id 
  * @param {Date} new_date 
+ * @param {boolean} increment_count 
  */
-async function updateLastRecordedResponseTime(survey_id, new_date) {
+async function updateLastRecordedResponseTime(survey_id, new_date, increment_count) {
   try {
     const params = {
       TableName: SURVEYS_TABLE,
       Key: { survey_id: survey_id },
-      UpdateExpression: "set last_recorded_response_time = :d, responses_today = responses_today + :v",
+      UpdateExpression: "set last_recorded_response_time = :d",
       ExpressionAttributeValues: {
         ":d": new_date.toISOString(),
-        ":v": 1
       },
       ReturnValues: "UPDATED_NEW"
     };
+
+    if (increment_count) {
+      params.UpdateExpression += ", responses_today = responses_today + :v";
+      params.ExpressionAttributeValues[":v"] = 1;
+    }
 
     const res = await DOC_CLIENT.update(params).promise();
     return fmt.packSuccess(res);

@@ -108,7 +108,7 @@ async function addLatestResponseToNewSurvey(survey_id) {
     if (!res) return fmt.packSuccess(false);
 
     const latest_response_time = new Date(res.values.endDate);
-    const [db_err, db_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest_response_time);
+    const [db_err, db_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest_response_time, false);
     if (db_err) return [err];
     if (!db_res) return fmt.packSuccess(false);
 
@@ -167,6 +167,8 @@ async function pollSurveyResponses(survey_id) {
     if (api_err) return [api_err];
     if (db_err) return [db_err];
 
+    console.log(db_data);
+
     // no responses yet, do nothing || no_db entry anymore
     if (!api_data || !db_data) return;
 
@@ -178,7 +180,7 @@ async function pollSurveyResponses(survey_id) {
 
     // proceed to update
     if (do_update) {
-      const [update_err, update_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest);
+      const [update_err, update_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest, true);
       if (update_err) return [update_err];
 
       // get number of logged responses from db result
@@ -212,10 +214,22 @@ async function sendProgressMessage(total_responses, subject_tel) {
   const next_reward_arrays_index = (reward_arrays_index < 8) ? reward_arrays_index+1 : reward_arrays_index;
 
   // message to send
-  const msg = ((total_responses == 1) ?
-    `You have earned $${PER_SURVEY_REWARD[0]}.` :
-    `You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey, for a total of $${TOTAL_REWARD[reward_arrays_index]} so far today.`)
-    + ` The next survey is worth $${PER_SURVEY_REWARD[next_reward_arrays_index]}.`;
+  let msg;
+  if (total_responses == 1) {
+    msg = `You have earned $${PER_SURVEY_REWARD[0]} for this survey.`;
+  }
+  else if (total_responses < 8) {
+    msg = `You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey. `
+        + `Total earned today is $${TOTAL_REWARD[reward_arrays_index]}. `
+        + `If this isn't your last survey, next one is worth $${PER_SURVEY_REWARD[next_reward_arrays_index]}.`;
+  }
+  else if (total_responses == 8) {
+    msg = `You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey. `
+        + `Total earned today is $${TOTAL_REWARD[reward_arrays_index]}. Congratulations!`;
+  }
+  else {
+    msg = `You have already responded to 8 surveys today.`;
+  }
 
   // now, send the message
   try {
@@ -364,7 +378,7 @@ router.post("/untrackSurvey", async function(req, res) {
     PROGRESS_SCHEDULE.Time = settings.progress_schedule.Time;
 
     // OVERRIDE INTERVAL_DELAY for DEUBG
-    //if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
+    if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
 
     // start tracking all existing surveys
     const [db_err, db_data] = await dbHandlers.scanTable();
