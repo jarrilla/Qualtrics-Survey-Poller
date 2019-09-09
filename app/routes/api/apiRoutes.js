@@ -304,9 +304,9 @@ function updateIntervalDelay(new_delay) {
 async function updateAppSettings(bulk_settings) {
   // sanitize polling interval
   let { PollInterval } = bulk_settings;
-  if (PollInterval < 10) {
-    PollInterval = 10;
-    bulk_settings.PollInterval = 10;
+  if (PollInterval < 5) {
+    PollInterval = 5;
+    bulk_settings.PollInterval = 5;
   }
 
   const [db_err, ] = await dbHandlers.updateStoredSettings(bulk_settings);
@@ -378,7 +378,7 @@ router.post("/untrackSurvey", async function(req, res) {
     PROGRESS_SCHEDULE.Time = settings.progress_schedule.Time;
 
     // OVERRIDE INTERVAL_DELAY for DEUBG
-    if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
+    //if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
 
     // start tracking all existing surveys
     const [db_err, db_data] = await dbHandlers.scanTable();
