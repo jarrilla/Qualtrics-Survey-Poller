@@ -175,26 +175,24 @@ async function getLastRecordedResponseTime(survey_id) {
  * @param {*} bulk_settings all the settings to update. Verified in front-end
  */
 async function updateStoredSettings(bulk_settings) {
-  const { RemoveInactive, PollInterval, SendOnNew, OnNewSms, ProgressSchedule, RestrictSchedule, RestrictedSchedule } = bulk_settings;
+  const { RemoveInactive, PollInterval, RestrictedDays, IsTimeRestricted, RestrictedTime } = bulk_settings;
 
   const params = {
     TableName: SURVEYS_TABLE,
     Key: { survey_id: "__APP_SETTINGS__" },
-    UpdateExpression: "set remove_inactive = :one, poll_interval = :two, send_on_new = :three, on_new_template = :four, progress_schedule = :five, restrict_schedule = :six, restricted_schedule= :seven",
+    UpdateExpression: "set remove_inactive = :one, poll_interval = :two, progress_schedule = :three, restrict_schedule = :four, restricted_schedule= :five",
     ExpressionAttributeValues: {
       ":one": Boolean(RemoveInactive),
       ":two": Number(PollInterval),
-      ":three": Boolean(SendOnNew),
-      ":four": OnNewSms || " ",
-      ":five": ProgressSchedule,
-      ":six": Boolean(RestrictSchedule),
-      ":seven": RestrictedSchedule
+      ":three": RestrictedDays,
+      ":four": Boolean(IsTimeRestricted),
+      ":five": RestrictedTime
     },
     ReturnValues: "UPDATED_NEW"
   };
 
   try {
-    const d = await DOC_CLIENT.update(params).promise();
+    await DOC_CLIENT.update(params).promise();
     return fmt.packSuccess(null);
   }
   catch (e) {
