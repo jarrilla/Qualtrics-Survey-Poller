@@ -55,8 +55,6 @@ router.get("/settings", async function(req, res) {
 
     params.RemoveInactive = settings.remove_inactive;
     params.PollInterval = settings.poll_interval;
-    params.SendOnNew = settings.send_on_new;
-    params.OnNewTemplate = settings.on_new_template;
     params.ProgressSchedule = settings.progress_schedule;
     params.RestrictSchedule = settings.restrict_schedule;
     params.RestrictedSchedule = settings.restricted_schedule;

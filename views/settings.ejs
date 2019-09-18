@@ -82,20 +82,13 @@
             </div>
           </div>
 
-          <div class="setting-subrow">
-            <span></span>
-            <span>
-              at <input id="progress-time" type="time">
-            </span>
-
-          </div>
         </div>
 
         <!-- SMS allowed schedule -->
         <div class="setting-container last-container">
           <div class="setting-row">
             <span>
-              Only send texts between:
+              Only track surveys between:
             </span>
             <input id="allowed-time-toggle" type="checkbox"
               <% if (locals.RestrictSchedule == true) { %> checked <% } %>
@@ -132,16 +125,6 @@
 
   <!-- LISTENERS -->
   <script>
-    // toggle text response show/hide
-    $("#send-text-toggle").change(function() {
-      if (this.checked) {
-        $("#after-response-textarea").removeClass("hidden");
-      }
-      else {
-        $("#after-response-textarea").addClass("hidden");
-      }
-    });
-
     // toggle allowed schedule show/hide
     $("#allowed-time-toggle").change(function() {
       if (this.checked) {
@@ -162,22 +145,17 @@
       // get all settings
       const $remove_inactive = $("#remove-inactive").is(":checked");
       const $poll_interval = $("#poll-interval").val();
-      const $send_on_new = $("#send-text-toggle").is(":checked");
-      const $on_new_sms = $("#after-response-textarea").val();
-      const $progress_schedule = {
-        Days: [
-          $("#M").is(":checked"),
-          $("#T").is(":checked"),
-          $("#W").is(":checked"),
-          $("#R").is(":checked"),
-          $("#F").is(":checked"),
-          $("#S").is(":checked"),
-          $("#U").is(":checked"),
-        ],
-        Time: $("#progress-time").val()
-      };
-      const $restrict_schedule = $("#allowed-time-toggle").is(":checked");
-      const $restricted_schedule = [
+      const $restricted_days = [
+        $("#M").is(":checked"),
+        $("#T").is(":checked"),
+        $("#W").is(":checked"),
+        $("#R").is(":checked"),
+        $("#F").is(":checked"),
+        $("#S").is(":checked"),
+        $("#U").is(":checked"),
+      ];
+      const $is_time_restricted = $("#allowed-time-toggle").is(":checked");
+      const $restricted_time = [
         $("#allowed-time-start").val(),
         $("#allowed-time-end").val()
       ];
@@ -189,11 +167,9 @@
         data: {
           RemoveInactive: $remove_inactive,
           PollInterval: $poll_interval,
-          SendOnNew: $send_on_new,
-          OnNewSms: $on_new_sms,
-          ProgressSchedule: $progress_schedule,
-          RestrictSchedule: $restrict_schedule,
-          RestrictedSchedule: $restricted_schedule
+          RestrictedDays: $restricted_days,
+          IsTimeRestricted: $is_time_restricted,
+          RestrictedTime: $restricted_time
         },
         success: function(data) {
           alert("Settings saved!");
