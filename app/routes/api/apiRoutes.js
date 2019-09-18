@@ -7,7 +7,6 @@
 const IS_DEBUG = (process.env.NODE_ENV == "debug");
 
 // imports
-const axios = require("axios");
 const express = require("express");
 const router = express.Router();
 
@@ -18,35 +17,41 @@ const qualtricsApi = require("../../libs/qualtricsApiHandlers");
 const twilioApi = require("../../libs/twilioApiHandlers");
 
 //------------------ GLOBAL VARS ---------------
-//----------------------------------------------
-
 // keep a map of all timeouts currently being tracked
 // keys: survey_id; vals: Interval
 const INTERVAL_MAP = new Map();
-
 //----------------------------------------------
+
+
 // GLOBALS that are infrequently updated so we store in memory
-//----------------------------------------------
 
+// { number }
 // delay between interval triggers: default=10 minutes
 // TODO: load this from a DB value on server start?
 let INTERVAL_DELAY; // (10 minutes)
 
-// (boolean) if true, use RESTRICTED_SCHEDULE
+// { boolean }
+//  if true, use node-schedule to only poll inside settings.RESTRICTED_SCHEDULE
 let IS_SCHEDULE_RESTRICTED;
 
 // start and end times for when twilio is allowed to send SMS
 // init: loads {Start, End}
 const RESTRICTED_SCHEDULE = {};
 
-// (boolean) if set to true, if a survey is inactive when polling, untrack it & remove it
+// { boolean }
+//  if set to true, if a survey is inactive when polling, untrack it & remove it
 let REMOVE_INACTIVE;
 
+// { [boolean] }
 // schedule of when tracking is allowed
 // init function will fill from DB o/w default value is never allowed
 // Monday=0, Tuesday=1, etc...
-// 
 let ALLOWED_DAYS;
+
+// { boolean }
+// if FALSE, no polling is done on that day
+// managed by node-schedule according to settings.ALLOWED_DAYS
+let IS_TODAY_ALLOWED;
 
 // rewards for completing surveys
 // the last index of each is used for when more than 8 surveys are completed
@@ -209,10 +214,7 @@ async function sendProgressMessage(total_responses, subject_tel) {
 
   // message to send
   let msg;
-  if (total_responses == 1) {
-    msg = `You have earned $${PER_SURVEY_REWARD[0]} for this survey.`;
-  }
-  else if (total_responses < 8) {
+  if (total_responses < 8) {
     msg = `You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey. `
         + `Total earned today is $${TOTAL_REWARD[reward_arrays_index]}. `
         + `If this isn't your last survey, next one is worth $${PER_SURVEY_REWARD[next_reward_arrays_index]}.`;
@@ -376,7 +378,7 @@ router.post("/untrackSurvey", async function(req, res) {
       INTERVAL_DELAY = 10*60*1000;
       ALLOWED_DAYS = Array(7).fill(false);
       IS_SCHEDULE_RESTRICTED = false;
-      RESTRICTED_SCHEDULE.Start = "8:00";
+      RESTRICTED_SCHEDULE.Start = "08:00";
       RESTRICTED_SCHEDULE.End = "23:00";
     }
 
