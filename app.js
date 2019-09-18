@@ -32,6 +32,4 @@ app.use("/", indexRoutes);
 app.use("/api", apiRoutes);
 
 // listen
-app.listen(process.env.PORT, function() {
-  console.log(`App running on port ${process.env.PORT}...`);
-});
+app.listen(process.env.PORT);

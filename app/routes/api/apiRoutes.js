@@ -7,14 +7,17 @@
 const IS_DEBUG = (process.env.NODE_ENV == "debug");
 
 // imports
-const express = require("express");
-const router = express.Router();
+const
+express       = require("express"),
+nodeSchedule  = require("node-schedule"),
+router        = express.Router();
 
 // libs
-const fmt = require("../../libs/format");
-const dbHandlers = require("../../libs/dbHandlers");
-const qualtricsApi = require("../../libs/qualtricsApiHandlers");
-const twilioApi = require("../../libs/twilioApiHandlers");
+const
+fmt           = require("../../libs/format"),
+dbHandlers    = require("../../libs/dbHandlers"),
+qualtricsApi  = require("../../libs/qualtricsApiHandlers"),
+twilioApi     = require("../../libs/twilioApiHandlers");
 
 //------------------ GLOBAL VARS ---------------
 // keep a map of all timeouts currently being tracked
@@ -58,8 +61,6 @@ let IS_TODAY_ALLOWED;
 // so surveys past 8 reward $0 => total is still $28
 const PER_SURVEY_REWARD = ["1", "1.50", "2", "2.50", "3", "4", "6", "8", "0"];
 const TOTAL_REWARD = ["1", "2.50", "4.50", "7", "10", "14", "20", "28", "28"];
-
-
 //----------------------------------------------
 //----------------------------------------------
 //----------------------------------------------
@@ -350,50 +351,83 @@ router.post("/untrackSurvey", async function(req, res) {
 //------------------- INIT ---------------------
 //----------------------------------------------
 
+async function init_loadSettings() {
+  console.assert(!IS_DEBUG, "Loading settings...");
+
+  const [sett_err, sett_data] = await dbHandlers.readStoredSettings();
+  if (sett_err) return [sett_err]
+
+  if (sett_data) {
+    const settings = sett_data.Item;
+
+    REMOVE_INACTIVE = settings.remove_inactive;
+    INTERVAL_DELAY = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
+    ALLOWED_DAYS = settings.allowed_days;
+    IS_SCHEDULE_RESTRICTED = settings.is_schedule_restricted;
+    RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[0];
+    RESTRICTED_SCHEDULE.End = settings.restricted_schedule[1];
+  }
+  else {
+    REMOVE_INACTIVE = true;
+    INTERVAL_DELAY = 10*60*1000;
+    ALLOWED_DAYS = Array(7).fill(false);
+    IS_SCHEDULE_RESTRICTED = false;
+    RESTRICTED_SCHEDULE.Start = "08:00";
+    RESTRICTED_SCHEDULE.End = "23:00";
+  }
+  if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
+
+  return fmt.packSuccess(null);
+}
+
+async function init_trackExistingSurveys() {
+  console.assert(!IS_DEBUG, "Tracking existing surveys...");
+
+  const [db_err, db_data] = await dbHandlers.scanTable();
+  if (db_err) return [db_err];
+
+  const m = INTERVAL_MAP;
+  const _set_interval = sid => {
+    if (m.has(sid) === false) {
+      m.set(sid, setInterval(pollSurveyResponses, INTERVAL_DELAY, sid));
+    }
+  };
+
+  const num_items = db_data.Items.length;
+  const uniform_delay = Math.ceil( INTERVAL_DELAY / num_items );
+  for (let i=0; i < num_items; i++) {
+    const survey_id = db_data.Items[i].survey_id;
+
+    setTimeout( _set_interval, uniform_delay*i + 1, survey_id );
+  }
+
+  return fmt.packSuccess(null);
+}
+
+/**
+ * Run a critical init function
+ * @param {function} func 
+ * @param {number} exitCode 
+ * @param  {...any} args 
+ */
+async function init_runCritical(func, exitCode, ...args) {
+  const [err, data] = await func(...args);
+  if (err) {
+    console.error(err);
+    process.exit(exitCode);
+  }
+
+  return fmt.packSuccess(data);
+}
+
 /**
  * initialize tracking of surveys already in data-table. called once when server starts
  */
-(async function _initTracking_() {
-  try {
-    // load settings into memory
-    const [sett_err, sett_data] = await dbHandlers.readStoredSettings();
-    if (sett_err) throw sett_err;
+(async function () {
+  await init_runCritical( init_loadSettings, 1 );
+  await init_runCritical( init_trackExistingSurveys, 2 );
 
-    const settings = sett_data.Item;
-    if (settings) {
-      REMOVE_INACTIVE = settings.remove_inactive;
-      INTERVAL_DELAY = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
-      ALLOWED_DAYS = settings.allowed_days;
-      IS_SCHEDULE_RESTRICTED = settings.is_schedule_restricted;
-      RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[0];
-      RESTRICTED_SCHEDULE.End = settings.restricted_schedule[1];
-    }
-    else {
-      REMOVE_INACTIVE = true;
-      INTERVAL_DELAY = 10*60*1000;
-      ALLOWED_DAYS = Array(7).fill(false);
-      IS_SCHEDULE_RESTRICTED = false;
-      RESTRICTED_SCHEDULE.Start = "08:00";
-      RESTRICTED_SCHEDULE.End = "23:00";
-    }
-
-    // OVERRIDE INTERVAL_DELAY for DEUBG
-    if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
-
-    // start tracking all existing surveys
-    const [db_err, db_data] = await dbHandlers.scanTable();
-    if (db_err) throw db_err;
-
-    for (let i=0; i < db_data.Items.length; i++) {
-      const survey_id = db_data.Items[i].survey_id;
-      INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
-    }
-
-  }
-  catch (e) {
-    // TODO: queue function to run again
-    console.log(e);
-  }
+  console.log(`App running on port ${process.env.PORT}...`);
 })();
 
 module.exports = router;
