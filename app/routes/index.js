@@ -53,11 +53,13 @@ router.get("/settings", async function(req, res) {
 
     const settings = db_data.Item;
 
-    params.RemoveInactive = settings.remove_inactive;
-    params.PollInterval = settings.poll_interval;
-    params.ProgressSchedule = settings.progress_schedule;
-    params.RestrictSchedule = settings.restrict_schedule;
-    params.RestrictedSchedule = settings.restricted_schedule;
+    if (settings) {
+      params.RemoveInactive = settings.remove_inactive;
+      params.PollInterval = settings.poll_interval;
+      params.AllowedDays = settings.allowed_days;
+      params.IsScheduleRestricted = settings.is_schedule_restricted;
+      params.RestrictedSchedule = settings.restricted_schedule;
+    }
   }
   catch (e) {
     console.log(e);

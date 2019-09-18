@@ -32,29 +32,21 @@ const INTERVAL_MAP = new Map();
 // TODO: load this from a DB value on server start?
 let INTERVAL_DELAY; // (10 minutes)
 
-// (boolean) if true, send a new sms every time a new response is recorded
-// uses NEW_RESPONSE_SMS_TEMPLATE
-let SEND_ON_NEW_RESPONSE;
-
-// template for sms messages sent after new responses
-let NEW_RESPONSE_SMS_TEMPLATE;
-
 // (boolean) if true, use RESTRICTED_SCHEDULE
-let RESTRICT_SCHEDULE;
+let IS_SCHEDULE_RESTRICTED;
 
 // start and end times for when twilio is allowed to send SMS
 // init: loads {Start, End}
 const RESTRICTED_SCHEDULE = {};
 
 // (boolean) if set to true, if a survey is inactive when polling, untrack it & remove it
-// TODO:
 let REMOVE_INACTIVE;
 
-// schedule of when to send progress reports
-// init: fills { Days [boolean]x7, Time: }
+// schedule of when tracking is allowed
+// init function will fill from DB o/w default value is never allowed
 // Monday=0, Tuesday=1, etc...
-// on day marked as true, send progress report when time=Time
-const PROGRESS_SCHEDULE = {};
+// 
+let ALLOWED_DAYS;
 
 // rewards for completing surveys
 // the last index of each is used for when more than 8 surveys are completed
@@ -189,10 +181,9 @@ async function pollSurveyResponses(survey_id) {
       // get number of logged responses from db result
       const num_logged_responses = Number(update_res.Attributes.responses_today);
 
-      if (SEND_ON_NEW_RESPONSE) {
-        const [msg_err, ] = await sendProgressMessage(num_logged_responses, db_data.Item.subject_tel);
-        if (msg_err) return [msg_err];
-      }
+      // send progress SMS
+      const [msg_err, ] = await sendProgressMessage(num_logged_responses, db_data.Item.subject_tel);
+      if (msg_err) return [msg_err];
     }
   }
   catch (e) {
@@ -312,6 +303,8 @@ async function updateAppSettings(bulk_settings) {
     bulk_settings.PollInterval = 5;
   }
 
+  console.log(bulk_settings);
+
   const [db_err, ] = await dbHandlers.updateStoredSettings(bulk_settings);
   if (db_err) return [db_err];
 
@@ -370,15 +363,22 @@ router.post("/untrackSurvey", async function(req, res) {
     if (sett_err) throw sett_err;
 
     const settings = sett_data.Item;
-    INTERVAL_DELAY = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
-    SEND_ON_NEW_RESPONSE = settings.send_on_new;
-    NEW_RESPONSE_SMS_TEMPLATE = settings.on_new_template;
-    RESTRICT_SCHEDULE = settings.restrict_schedule;
-    RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[0];
-    RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[1];
-    REMOVE_INACTIVE = settings.remove_inactive;
-    PROGRESS_SCHEDULE.Days = settings.progress_schedule.Days;
-    PROGRESS_SCHEDULE.Time = settings.progress_schedule.Time;
+    if (settings) {
+      REMOVE_INACTIVE = settings.remove_inactive;
+      INTERVAL_DELAY = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
+      ALLOWED_DAYS = settings.allowed_days;
+      IS_SCHEDULE_RESTRICTED = settings.is_schedule_restricted;
+      RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[0];
+      RESTRICTED_SCHEDULE.End = settings.restricted_schedule[1];
+    }
+    else {
+      REMOVE_INACTIVE = true;
+      INTERVAL_DELAY = 10*60*1000;
+      ALLOWED_DAYS = Array(7).fill(false);
+      IS_SCHEDULE_RESTRICTED = false;
+      RESTRICTED_SCHEDULE.Start = "8:00";
+      RESTRICTED_SCHEDULE.End = "23:00";
+    }
 
     // OVERRIDE INTERVAL_DELAY for DEUBG
     if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging

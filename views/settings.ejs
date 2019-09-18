@@ -32,7 +32,7 @@
             <span>Check surveys for responses every</span>
             <span>
                 <input id="poll-interval" type="number" step="5" style="width:4em;" min="10"
-                  value="<%-locals.PollInterval%>"
+                  value="<%- (locals.PollInterval || 10) %>"
                 >
                 min.
             </span>
@@ -46,66 +46,55 @@
           </div>
 
           <div class="setting-subrow schedule-row">
-            <div>
-              <label for="M">M</label>
-              <input id="M" type="checkbox">
-            </div>
+            <%
+            const day_labels = ["M", "T", "W", "R", "F", "S", "U"];
+            const allowed_days = locals.AllowedDays || Array(7).fill(false);
 
+            for (let i=0; i < allowed_days.length; i++) {
+              const day = day_labels[i];
+              const allowed = JSON.parse(allowed_days[i]);
+            %>
             <div>
-              <label for="T">T</label>
-              <input id="T" type="checkbox">
-            </div>
+              <label for="<%-day%>">
+                <%-day%>
+              </label>
 
-            <div>
-              <label for="W">W</label>
-              <input id="W" type="checkbox">
+              <input
+                id="<%-day%>"
+                type="checkbox"
+                <% if (allowed) { %> checked <% } %>
+              >
             </div>
-
-            <div>
-              <label for="R">R</label>
-              <input id="R" type="checkbox">
-            </div>
-
-            <div>
-              <label for="F">F</label>
-              <input id="F" type="checkbox">
-            </div>
-
-            <div>
-              <label for="S">S</label>
-              <input id="S" type="checkbox">
-            </div>
-
-            <div>
-              <label for="U">U</label>
-              <input id="U" type="checkbox">
-            </div>
+            <% } %>
           </div>
-
         </div>
 
         <!-- SMS allowed schedule -->
         <div class="setting-container last-container">
+          <% const is_restricted = locals.IsScheduleRestricted === undefined ? true : JSON.parse( IsScheduleRestricted ); %>
+
           <div class="setting-row">
             <span>
               Only track surveys between:
             </span>
             <input id="allowed-time-toggle" type="checkbox"
-              <% if (locals.RestrictSchedule == true) { %> checked <% } %>
+              <% if (is_restricted) { %> checked <% } %>
             >
           </div>
 
           <div class="setting-subrow">
             <span></span>
             <div id="allowed-range"
-              <% if (locals.RestrictSchedule == false) { %> class="hidden" <% } %>
+              <% if (is_restricted === false) { %> class="hidden" <% } %>
             >
+              <% const schedule = locals.RestrictedSchedule || ["08:00", "23:00"]; %>
+
               <input id="allowed-time-start" type="time"
-                value="<%-locals.RestrictedSchedule[0]%>"
+                value="<%-schedule[0]%>"
               >
               <span>and</span>
               <input id="allowed-time-end" type="time"
-                value="<%-locals.RestrictedSchedule[1]%>"
+                value="<%-schedule[1]%>"
               >
             </div>
           </div>
@@ -145,7 +134,7 @@
       // get all settings
       const $remove_inactive = $("#remove-inactive").is(":checked");
       const $poll_interval = $("#poll-interval").val();
-      const $restricted_days = [
+      const $allowed_days = [
         $("#M").is(":checked"),
         $("#T").is(":checked"),
         $("#W").is(":checked"),
@@ -154,8 +143,8 @@
         $("#S").is(":checked"),
         $("#U").is(":checked"),
       ];
-      const $is_time_restricted = $("#allowed-time-toggle").is(":checked");
-      const $restricted_time = [
+      const $is_schedule_restricted = $("#allowed-time-toggle").is(":checked");
+      const $restricted_schedule = [
         $("#allowed-time-start").val(),
         $("#allowed-time-end").val()
       ];
@@ -167,9 +156,9 @@
         data: {
           RemoveInactive: $remove_inactive,
           PollInterval: $poll_interval,
-          RestrictedDays: $restricted_days,
-          IsTimeRestricted: $is_time_restricted,
-          RestrictedTime: $restricted_time
+          AllowedDays: $allowed_days,
+          IsScheduleRestricted: $is_schedule_restricted,
+          RestrictedSchedule: $restricted_schedule
         },
         success: function(data) {
           alert("Settings saved!");
