@@ -129,7 +129,6 @@ async function untrackSurvey(survey_id) {
   const interval = INTERVAL_MAP.get(survey_id);
   if (interval) {
     clearInterval(interval);
-    console.log("cleared interval");
   }
   INTERVAL_MAP.delete(survey_id);
 
@@ -166,8 +165,6 @@ async function pollSurveyResponses(survey_id) {
 
     if (api_err) return [api_err];
     if (db_err) return [db_err];
-
-    console.log(db_data);
 
     // no responses yet, do nothing || no_db entry anymore
     if (!api_data || !db_data) return;
@@ -304,8 +301,6 @@ async function updateAppSettings(bulk_settings) {
     PollInterval = 5;
     bulk_settings.PollInterval = 5;
   }
-
-  console.log(bulk_settings);
 
   const [db_err, ] = await dbHandlers.updateStoredSettings(bulk_settings);
   if (db_err) return [db_err];

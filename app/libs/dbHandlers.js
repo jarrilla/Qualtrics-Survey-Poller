@@ -192,8 +192,7 @@ async function updateStoredSettings(bulk_settings) {
   };
 
   try {
-    const d = await DOC_CLIENT.update(params).promise();
-    console.log(d);
+    await DOC_CLIENT.update(params).promise();
     return fmt.packSuccess(null);
   }
   catch (e) {
