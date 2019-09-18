@@ -288,11 +288,14 @@ async function getLatestSurveyResponse(survey_id) {
 function updateIntervalDelay(new_delay) {
   INTERVAL_DELAY = new_delay;
 
+  const survey_ids = [];
   INTERVAL_MAP.forEach((v,k) => {
     clearInterval(v);
-    v = setInterval(pollSurveyResponses, new_delay, k);
+    survey_ids.push(k);
   });
 
+  // @ts-ignore
+  QueueSurveyIdsForTracking(survey_ids);
 }
 
 async function updateAppSettings(bulk_settings) {
@@ -309,6 +312,28 @@ async function updateAppSettings(bulk_settings) {
   updateIntervalDelay(PollInterval * 60 * 1000);
 
   return fmt.packSuccess(null);
+}
+
+/**
+ * Uniformly distribute polling intervals throughout INTERVAL_DELAY
+ * so Qualtrics API is less likely to bounce requests
+ * 
+ * @param {[string]} surveIdsArr array of Qualtrics Survey Ids
+ */
+function QueueSurveyIdsForTracking(surveIdsArr) {
+
+  const m = INTERVAL_MAP;
+  const _set_interval = sid => {
+    if (m.has(sid) === false) {
+      m.set(sid, setInterval(pollSurveyResponses, INTERVAL_DELAY, sid));
+    }
+  };
+
+  const num_items = surveIdsArr.length;
+  const uniform_delay = Math.ceil( INTERVAL_DELAY / num_items );
+  for (let i=0; i < num_items; i++) {
+    setTimeout( _set_interval, uniform_delay*(i+1), surveIdsArr[i] );
+  }
 }
 
 //----------------------------------------------
@@ -386,20 +411,8 @@ async function init_trackExistingSurveys() {
   const [db_err, db_data] = await dbHandlers.scanTable();
   if (db_err) return [db_err];
 
-  const m = INTERVAL_MAP;
-  const _set_interval = sid => {
-    if (m.has(sid) === false) {
-      m.set(sid, setInterval(pollSurveyResponses, INTERVAL_DELAY, sid));
-    }
-  };
-
-  const num_items = db_data.Items.length;
-  const uniform_delay = Math.ceil( INTERVAL_DELAY / num_items );
-  for (let i=0; i < num_items; i++) {
-    const survey_id = db_data.Items[i].survey_id;
-
-    setTimeout( _set_interval, uniform_delay*i + 1, survey_id );
-  }
+  const survey_ids = db_data.Items.map(x => x.survey_id);
+  QueueSurveyIdsForTracking(survey_ids);
 
   return fmt.packSuccess(null);
 }
