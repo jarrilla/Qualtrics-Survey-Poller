@@ -1,16 +1,14 @@
 // app/libs/dbHandlers.js
 // All of our DynamoDB handlers & table setup
 
-// setup different if in debug
-const IS_DEBUG = (process.env.NODE_ENV == "debug");
-
 const AWS = require("aws-sdk");
 
 // libs
 const fmt = require("./format");
+const config = require("./config");
 
 // setup AWS objects
-const __AWS_CONFIG__ = IS_DEBUG ? {
+const __AWS_CONFIG__ = config.IS_DEBUG ? {
   region: process.env.AWS_REGION,
   endpoint: "http://localhost:8000"
 } : {

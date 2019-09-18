@@ -47,7 +47,7 @@
 
           <div class="setting-subrow schedule-row">
             <%
-            const day_labels = ["M", "T", "W", "R", "F", "S", "U"];
+            const day_labels = ["S", "M", "T", "W", "R", "F", "S"];
             const allowed_days = locals.AllowedDays || Array(7).fill(false);
 
             for (let i=0; i < allowed_days.length; i++) {
@@ -75,7 +75,7 @@
 
           <div class="setting-row">
             <span>
-              Only track surveys between:
+              Restrict polling to the follwing times:
             </span>
             <input id="allowed-time-toggle" type="checkbox"
               <% if (is_restricted) { %> checked <% } %>
@@ -135,13 +135,13 @@
       const $remove_inactive = $("#remove-inactive").is(":checked");
       const $poll_interval = $("#poll-interval").val();
       const $allowed_days = [
+        $("#U").is(":checked"),
         $("#M").is(":checked"),
         $("#T").is(":checked"),
         $("#W").is(":checked"),
         $("#R").is(":checked"),
         $("#F").is(":checked"),
         $("#S").is(":checked"),
-        $("#U").is(":checked"),
       ];
       const $is_schedule_restricted = $("#allowed-time-toggle").is(":checked");
       const $restricted_schedule = [

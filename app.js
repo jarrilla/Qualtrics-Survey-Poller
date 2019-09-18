@@ -13,6 +13,12 @@
 // env vars
 require("dotenv").config();
 
+// libs
+const
+fmt = require("./app/libs/format"),
+config = require("./app/libs/config"),
+qualtrics = require("./app/libs/qualtricsApiHandlers");
+
 // includes
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -33,3 +39,30 @@ app.use("/api", apiRoutes);
 
 // listen
 app.listen(process.env.PORT);
+
+//----------------------------------------------
+//------------------- INIT ---------------------
+//----------------------------------------------
+
+/**
+ * Run a critical init function
+ * @param {function} func 
+ * @param {number} exitCode 
+ * @param  {...any} args 
+ */
+async function init_runCritical(func, exitCode, ...args) {
+  const [err, data] = await func(...args);
+  if (err) {
+    console.error(err);
+    process.exit(exitCode);
+  }
+
+  return fmt.packSuccess(data);
+}
+
+(async function () {
+  await init_runCritical( config.init, 1 );
+  await init_runCritical( qualtrics.init, 2 );
+
+  console.log(`App running on port ${process.env.PORT}...`);
+})();
