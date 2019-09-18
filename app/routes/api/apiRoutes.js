@@ -95,8 +95,10 @@ async function trackNewSurvey(survey_id, subject_tel, subject_id) {
   if (db_err) return [db_err];
 
   await addLatestResponseToNewSurvey(survey_id);
-
-  INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
+  
+  if (INTERVAL_MAP.has(survey_id) === false) {
+    INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, INTERVAL_DELAY, survey_id));
+  }
 
   return fmt.packSuccess(db_res);
 }
@@ -130,8 +132,9 @@ async function untrackSurvey(survey_id) {
   const interval = INTERVAL_MAP.get(survey_id);
   if (interval) {
     clearInterval(interval);
-    INTERVAL_MAP.delete(survey_id);
+    console.log("cleared interval");
   }
+  INTERVAL_MAP.delete(survey_id);
 
   return fmt.packSuccess(null);
 }
@@ -378,7 +381,7 @@ router.post("/untrackSurvey", async function(req, res) {
     PROGRESS_SCHEDULE.Time = settings.progress_schedule.Time;
 
     // OVERRIDE INTERVAL_DELAY for DEUBG
-    //if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
+    if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // 1 minute if debugging
 
     // start tracking all existing surveys
     const [db_err, db_data] = await dbHandlers.scanTable();
