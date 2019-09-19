@@ -71,6 +71,7 @@ tools         = require("./tools");
 
 // Helper functions ----------------------------
 function updateAllowedDays(diffIndicesArray) {
+
   const arr = ALLOWED_DAYS;
   for (let i=0; i < diffIndicesArray.length; i++) {
     // updated memory
@@ -89,6 +90,7 @@ function updateAllowedDays(diffIndicesArray) {
   if ( diffIndicesArray.includes(day_today) ) {
     IS_TODAY_ALLOWED = !IS_TODAY_ALLOWED;
   }
+
 }
 
 /**
@@ -200,7 +202,6 @@ async function updateAppSettings(bulk_settings) {
 
 // updated globals
   REMOVE_INACTIVE = JSON.parse(RemoveInactive);
-  ALLOWED_DAYS = AllowedDays;
   INTERVAL_DELAY = PollInterval;
   IS_SCHEDULE_RESTRICTED = JSON.parse(IsScheduleRestricted);
   RESTRICTED_SCHEDULE.Start = RestrictedSchedule[0],

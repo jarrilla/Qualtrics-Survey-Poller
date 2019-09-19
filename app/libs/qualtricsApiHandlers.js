@@ -272,13 +272,14 @@ function canPollNow() {
  * @param {string} survey_id Qualtrics survey ID
  */
 async function pollSurveyResponses(survey_id) {
-  
+
   // first check schedule allowance
   const can_poll_now = canPollNow();
   
   // we're about to start polling.. update latest response
   // so we ignore any responses submitted while we weren't polling
   if ( !LastPollingAllowed && can_poll_now ) {
+    
     await _callWrapper_( checkForLatestResponse(survey_id) );
   }
 
@@ -286,8 +287,12 @@ async function pollSurveyResponses(survey_id) {
   LastPollingAllowed = can_poll_now;
 
   // can't poll yet -> exit
-  if (!can_poll_now) return;
+  if (!can_poll_now) {
+    
+    return;
+  }
 
+  
   try {
     // untrack inactive if user setting set to true
     if (config.getRemoveInactive() === true) {
