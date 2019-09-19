@@ -133,7 +133,7 @@ async function init() {
   if (sett_data) {
     const settings = sett_data.Item;
 
-    REMOVE_INACTIVE = settings.remove_inactive;
+    REMOVE_INACTIVE = JSON.parse(settings.remove_inactive);
     INTERVAL_DELAY = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
     ALLOWED_DAYS = settings.allowed_days.map(x => JSON.parse(x));
     IS_SCHEDULE_RESTRICTED = JSON.parse(settings.is_schedule_restricted);
@@ -141,6 +141,8 @@ async function init() {
     RESTRICTED_SCHEDULE.End = settings.restricted_schedule[1];
   }
   else {
+    // default values in case DB missing settings data
+
     REMOVE_INACTIVE = true;
     INTERVAL_DELAY = 10*60*1000;
     ALLOWED_DAYS = Array(7).fill(false);
@@ -159,6 +161,10 @@ async function init() {
   nodeSchedule.scheduleJob( makeRuleAtMidnightOnDay(null) , function() {
     qualtrics.resetAllSurveyCounters();
   });
+
+  // restore restricted schedule
+  restoreRestrictedScheduleRules();
+
 
   return fmt.packSuccess(null);
 }
@@ -193,7 +199,7 @@ async function updateAppSettings(bulk_settings) {
   const do_dayChange = diff_days.length > 0;
 
 // updated globals
-  REMOVE_INACTIVE = RemoveInactive;
+  REMOVE_INACTIVE = JSON.parse(RemoveInactive);
   ALLOWED_DAYS = AllowedDays;
   INTERVAL_DELAY = PollInterval;
   IS_SCHEDULE_RESTRICTED = JSON.parse(IsScheduleRestricted);
