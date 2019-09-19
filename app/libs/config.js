@@ -81,7 +81,7 @@ function updateAllowedDays(diffIndicesArray) {
     // updated scheduler
     const rule = new nodeSchedule.RecurrenceRule();
     rule.minute = 0;
-    rule.hour = 0;
+    rule.hour = 5; // (offset by +5 b/c of UTC timezone difference)
     rule.dayOfWeek = k;
 
     nodeSchedule.scheduleJob(rule, function(x) {
@@ -101,9 +101,6 @@ function updateAllowedDays(diffIndicesArray) {
 // Exported functions --------------------------
 async function init() {
   console.assert(!IS_DEBUG, "Loading settings...");
-
-  const d = new Date();
-  console.log(d.toLocaleString());
 
   const [sett_err, sett_data] = await dbHandlers.readStoredSettings();
   if (sett_err) return [sett_err]
@@ -133,10 +130,10 @@ async function init() {
   // debug polling delay
   if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // debug only
 
-  // setup scheduled response reset at midnight every day
+  // setup scheduled response reset at midnight (or 1 during EDT) every day
   const rule = new nodeSchedule.RecurrenceRule()
   rule.minute = 0;
-  rule.hour = 20;
+  rule.hour = 5; // (offset by +5 b/c of UTC timezone difference)
 
   nodeSchedule.scheduleJob(rule, function() {
     qualtrics.resetAllSurveyCounters();
