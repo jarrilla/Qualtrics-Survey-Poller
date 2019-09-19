@@ -79,12 +79,7 @@ function updateAllowedDays(diffIndicesArray) {
     arr[k] = !b;
 
     // updated scheduler
-    const rule = new nodeSchedule.RecurrenceRule();
-    rule.minute = 0;
-    rule.hour = 5; // (offset by +5 b/c of UTC timezone difference)
-    rule.dayOfWeek = k;
-
-    nodeSchedule.scheduleJob(rule, function(x) {
+    nodeSchedule.scheduleJob( makeRuleAtMidnightOnDay(k) , function(x) {
       IS_TODAY_ALLOWED = x;
     }.bind(null, arr[k]));
   }
@@ -94,6 +89,36 @@ function updateAllowedDays(diffIndicesArray) {
   if ( diffIndicesArray.includes(day_today) ) {
     IS_TODAY_ALLOWED = !IS_TODAY_ALLOWED;
   }
+}
+
+/**
+ * Restore nodeSchedule rules for (un)allowing days.
+ * call once on init()
+ */
+function restoreRestrictedScheduleRules() {
+  const arr = ALLOWED_DAYS;
+  for (let i=0; i < arr.length; i++) {
+    const b = arr[i];
+
+    nodeSchedule.scheduleJob( makeRuleAtMidnightOnDay(i) , function(x) {
+      IS_TODAY_ALLOWED = b;
+    }.bind(null, b));
+  }
+}
+
+/**
+ * 
+ * @param {number | null} day (0-6) or (null) for every day
+ */
+function makeRuleAtMidnightOnDay(day) {
+  if (day < 0 || day > 6) return null;
+
+  const rule = new nodeSchedule.RecurrenceRule();
+  rule.minute = 0;
+  rule.hour = 5; // (offset by +5 b/c of UTC timezone difference)
+  if (day !== null) rule.dayOfWeek = day;
+
+  return rule;
 }
 //----------------------------------------------
 
@@ -131,11 +156,7 @@ async function init() {
   if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // debug only
 
   // setup scheduled response reset at midnight (or 1 during EDT) every day
-  const rule = new nodeSchedule.RecurrenceRule()
-  rule.minute = 0;
-  rule.hour = 5; // (offset by +5 b/c of UTC timezone difference)
-
-  nodeSchedule.scheduleJob(rule, function() {
+  nodeSchedule.scheduleJob( makeRuleAtMidnightOnDay(null) , function() {
     qualtrics.resetAllSurveyCounters();
   });
 
