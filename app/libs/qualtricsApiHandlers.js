@@ -36,6 +36,11 @@ tools       = require("./tools");
 // keys: survey_id; vals: Interval
 const INTERVAL_MAP = new Map();
 
+// keep track of (canPollNow() result)
+// when flipping from false -> true, we update the latest response time
+// to effectively ignore any responses submitted while we weren't tracking
+let LastPollingAllowed = false;
+
 // rewards for completing surveys
 // the last index of each is used for when more than 8 surveys are completed
 // so surveys past 8 reward $0 => total is still $28
@@ -49,7 +54,7 @@ const MAX_ATTEMPTS=5;
 const PROG_POLL_INTERVAL_DELAY=500;
 
 // max number of attempts we'll poll an export progress completion before giving up
-const MAX_PROG_POLL_ATTEMPTS=100;
+const MAX_PROG_POLL_ATTEMPTS=10;
 
 // API headers
 const AXIOS_CONFIG = { headers: { "X-API-TOKEN": process.env.QUALTRICS_API_KEY } };
@@ -163,7 +168,7 @@ async function getResponseExportFile(survey_id, file_id) {
 
 // Helper functions
 // -----------------------------------
-async function addLatestResponseToNewSurvey(survey_id) {
+async function checkForLatestResponse(survey_id) {
   try {
     const [err, res] = await getLatestSurveyResponse(survey_id);
     if (err) return [err];
@@ -263,13 +268,25 @@ function canPollNow() {
 }
 
 /**
- * TODO: reset recorded responses at the start of every day (the specific time can be a user setting?)
+ * Poll a survey for responses if we're within the allowed schedule.
  * @param {string} survey_id Qualtrics survey ID
  */
 async function pollSurveyResponses(survey_id) {
   
   // first check schedule allowance
-  if ( !canPollNow() ) return;
+  const can_poll_now = canPollNow();
+  
+  // we're about to start polling.. update latest response
+  // so we ignore any responses submitted while we weren't polling
+  if ( !LastPollingAllowed && can_poll_now ) {
+    await _callWrapper_( checkForLatestResponse(survey_id) );
+  }
+
+  // update polling allowed flag
+  LastPollingAllowed = can_poll_now;
+
+  // can't poll yet -> exit
+  if (!can_poll_now) return;
 
   try {
     // untrack inactive if user setting set to true
@@ -391,7 +408,7 @@ async function trackNewSurvey(survey_id, subject_tel, subject_id) {
   const [db_err, db_res] = await dbHandlers.putItem(survey_name, ...arguments);
   if (db_err) return [db_err];
 
-  await addLatestResponseToNewSurvey(survey_id);
+  await checkForLatestResponse(survey_id);
   
   if (INTERVAL_MAP.has(survey_id) === false) {
     INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, config.getIntervalDelay(), survey_id));
