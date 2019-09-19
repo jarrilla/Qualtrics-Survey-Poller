@@ -102,6 +102,9 @@ function updateAllowedDays(diffIndicesArray) {
 async function init() {
   console.assert(!IS_DEBUG, "Loading settings...");
 
+  const d = new Date();
+  console.log(d.toLocaleString());
+
   const [sett_err, sett_data] = await dbHandlers.readStoredSettings();
   if (sett_err) return [sett_err]
 
