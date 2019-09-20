@@ -213,12 +213,33 @@ async function readStoredSettings() {
   }
 }
 
+async function resetResponses(survey_id) {
+  const params = {
+    TableName: SURVEYS_TABLE,
+    Key: { survey_id: survey_id },
+    UpdateExpression: "set responses_today = :v",
+    ExpressionAttributeValues: {
+      ":v": 0
+    },
+    ReturnValues: "UPDATED_NEW"
+  };
+
+  try {
+    const res = DOC_CLIENT.update(params).promise();
+    return fmt.packSuccess(res);
+  }
+  catch (e) {
+    return fmt.packError(e, "Unexpected error resetting survey count. SurveyId: " + survey_id);
+  }
+}
+
 module.exports = {
-  scanTable: scanTable,
-  putItem: putItem,
-  getLastRecordedResponseTime: getLastRecordedResponseTime,
-  updateLastRecordedResponseTime: updateLastRecordedResponseTime,
-  removeItem: removeItem,
-  updateStoredSettings: updateStoredSettings,
-  readStoredSettings: readStoredSettings
+  scanTable,
+  putItem,
+  getLastRecordedResponseTime,
+  updateLastRecordedResponseTime,
+  removeItem,
+  updateStoredSettings,
+  readStoredSettings,
+  resetResponses
 };

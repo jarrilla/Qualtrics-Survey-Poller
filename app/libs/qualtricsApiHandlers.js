@@ -9,7 +9,8 @@ module.exports = {
   init,
   trackNewSurvey,
   untrackSurvey,
-  updateIntervalDelay
+  updateIntervalDelay,
+  resetAllSurveyCounters
 };
 // -----------------------------------
 
@@ -400,7 +401,7 @@ async function trackNewSurvey(survey_id, subject_tel, subject_id) {
 }
 
 /**
- * Clear 
+ * Clear interval map and queue all survyes+new one to be tracked..
  */
 function updateIntervalDelay() {
   const survey_ids = [];
@@ -443,4 +444,28 @@ async function untrackSurvey(survey_id) {
   INTERVAL_MAP.delete(survey_id);
 
   return fmt.packSuccess(null);
+}
+
+/**
+ * Reset all surveys' #recorded_responses to 0
+ */
+async function resetAllSurveyCounters() {
+  const survey_ids = [ ...INTERVAL_MAP.keys() ];
+
+  const _try_ = async (f, ...args) => {
+    for (let i=0; i < 50; i++) {
+      const [err, data] = await f(...args);
+      if (err) console.log(err);
+      else return data;
+    }
+  };
+
+  const promises = [];
+  for (let i=0; i < survey_ids.length; i++) {
+    promises.push( _try_( dbHandlers.resetResponses, survey_ids[i] ) );
+  }
+
+  await Promise.all(promises);
+
+  // this is pretty sloppy.. but this app should never be under that much strain.. so.. ok
 }

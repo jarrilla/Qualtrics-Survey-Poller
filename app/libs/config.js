@@ -84,14 +84,13 @@ function updateAllowedDays(diffIndicesArray) {
     rule.hour = 0;
     rule.dayOfWeek = k;
 
-    nodeSchedule.scheduleJob(rule, () => {
-      const v = arr[k];
-      IS_TODAY_ALLOWED = v;
-    });
+    nodeSchedule.scheduleJob(rule, function(x) {
+      IS_TODAY_ALLOWED = x;
+    }.bind(null, arr[k]));
   }
 
   const day_today = new Date().getDay();
-  // today changed.. flip now
+  // today changed.. flip now (otherwise, have to wait til next week)
   if ( diffIndicesArray.includes(day_today) ) {
     IS_TODAY_ALLOWED = !IS_TODAY_ALLOWED;
   }
@@ -130,6 +129,15 @@ async function init() {
 
   // debug polling delay
   if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // debug only
+
+  // setup scheduled response reset at midnight every day
+  const rule = new nodeSchedule.RecurrenceRule()
+  rule.minute = 0;
+  rule.hour = 20;
+
+  nodeSchedule.scheduleJob(rule, function() {
+    qualtrics.resetAllSurveyCounters();
+  });
 
   return fmt.packSuccess(null);
 }
