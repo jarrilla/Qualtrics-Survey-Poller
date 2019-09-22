@@ -48,19 +48,21 @@
           <div class="setting-subrow schedule-row">
             <%
             const day_labels = ["S", "M", "T", "W", "R", "F", "S"];
+            const day_id_labels = ["U", "M", "T", "W", "R", "F", "S"];
             const allowed_days = locals.AllowedDays || Array(7).fill(false);
 
             for (let i=0; i < allowed_days.length; i++) {
               const day = day_labels[i];
+              const day_id = day_id_labels[i];
               const allowed = JSON.parse(allowed_days[i]);
             %>
             <div>
-              <label for="<%-day%>">
+              <label for="<%-day_id%>">
                 <%-day%>
               </label>
 
               <input
-                id="<%-day%>"
+                id="<%-day_id%>"
                 type="checkbox"
                 <% if (allowed) { %> checked <% } %>
               >
