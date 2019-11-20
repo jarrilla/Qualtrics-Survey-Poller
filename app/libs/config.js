@@ -117,7 +117,7 @@ function makeRuleAtMidnightOnDay(day) {
 
   const rule = new nodeSchedule.RecurrenceRule();
   rule.minute = 0;
-  rule.hour = 5; // (offset by +5 b/c of UTC timezone difference)
+  rule.hour = 6; // (offset by +5 b/c of UTC timezone difference)
   if (day !== null) rule.dayOfWeek = day;
 
   return rule;
