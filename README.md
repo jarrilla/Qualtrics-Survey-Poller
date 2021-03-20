@@ -1,8 +1,10 @@
-Using survey:
-http://cmu.ca1.qualtrics.com/jfe/form/SV_dnEGQcB3RAcAVW5
+# Qualtrics.SurveyTracker v2
 
-to test Qualtrics API calls...
-current method will be polling approx. every 5 minutes
+Simple webapp to track Qualtrics Surveys using webhooks.
 
-real time webhooks requires brand admin permissions which we do not have
-and would have to be set up for every single survey making this an unfeasible option
+API key must have Brand Administrator priviledges for this strategy to work.
+
+Current intended flow:
+1. User creates a survey which should be automatically activated. A webhook should then call `/surveys/add` to begin tracking a survey (not sure this is necessary).
+1. Whenever a response is submitted, a webhook should call `/surveys/response` which should follow the currently established logic (look at \# of responses and send text to subject)
+1. User de-activtes a survey after probing period. A webhook should then call `surveys/remove` to stop tracking the survey (not sure this is necessary).

@@ -4,8 +4,9 @@
   "description": "Qualtrics survey tracker for CMU Psych department.",
   "main": "app.js",
   "dependencies": {
+    "@ginger.io/beyonce": "^0.0.64",
     "aws-sdk": "^2.530.0",
-    "axios": "^0.19.0",
+    "axios": "^0.21.1",
     "body-parser": "^1.19.0",
     "dotenv": "^8.1.0",
     "ejs": "^2.7.1",
@@ -14,7 +15,11 @@
     "nodemailer": "^6.3.0",
     "twilio": "^3.34.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/express": "^4.17.11",
+    "@types/qs": "^6.9.6",
+    "typescript": "^4.2.3"
+  },
   "scripts": {
     "start": "node app.js"
   },
