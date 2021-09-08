@@ -49,6 +49,8 @@ async function sendMail(error, msg) {
  * @param {number} status_code 
  */
 function packError(error, msg, status_code=500) {
+  console.error(error);
+  
   sendMail(error, msg);
 
   return [{
