@@ -4,27 +4,32 @@
 
 // setup nodemailer
 const nodemailer = require("nodemailer");
-const sender_addr = process.env.MAILER_ADDR;
-const sender_pwd = process.env.MAILER_PWD;
+
+const SENDER_ADDR = process.env.MAILER_ADDR;
+const SENDER_PWD = process.env.MAILER_PWD;
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: sender_addr,
-    pass: sender_pwd
+    user: SENDER_ADDR,
+    pass: SENDER_PWD
   }
 });
 
 // receiver address for errors
-const dev_addr = process.env.DEV_ADDR;
+const ERROR_REPORTS_ADDR = process.env.ERROR_REPORTS_ADDR;
 
+module.exports = {
+  packError,
+  packSuccess
+};
 
 // send error mail
 async function sendMail(error, msg) {
   const title = "CMU.Pysch.Qualtrics.SurveyTracker Error -- " + msg;
 
   const mail_opts = {
-    from: sender_addr,
-    to: dev_addr,
+    from: SENDER_ADDR,
+    to: ERROR_REPORTS_ADDR,
     subject: title,
     text: error.toString()
   };
@@ -63,8 +68,3 @@ function packError(error, msg, status_code=500) {
 function packSuccess(data) {
   return [null, data];
 }
-
-module.exports = {
-  packError: packError,
-  packSuccess: packSuccess
-};
