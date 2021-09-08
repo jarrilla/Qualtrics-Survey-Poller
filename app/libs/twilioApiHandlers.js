@@ -9,12 +9,19 @@ const fmt = require("./format");
 // set up twilio access
 const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const CLIENT = require("twilio")(ACCOUNT_SID, AUTH_TOKEN);
 const SOURCE_NUMBER = process.env.TWILIO_PHONE_NUM;
+
+let TWILIO_CLIENT;
 
 module.exports = {
   SendMessage
 };
+
+(function _init_() {
+  if ( !!ACCOUNT_SID && !!AUTH_TOKEN && !!SOURCE_NUMBER ) {
+    TWILIO_CLIENT = require("twilio")(ACCOUNT_SID, AUTH_TOKEN);
+  }
+})();
 
 /**
  * Send an SMS
@@ -22,17 +29,23 @@ module.exports = {
  * @param {string} to the phone number to send the message to
  */
 async function SendMessage(body, to) {
-  try {
-    const sid = await CLIENT.messages.create({
-      body: body,
-      to: formatPhoneNumber(to),
-      from: formatPhoneNumber(SOURCE_NUMBER)
-    });
 
-    return fmt.packSuccess(sid);
+  if ( !TWILIO_CLIENT ) {
+    console.debug(body);
   }
-  catch (e) {
-    return fmt.packError(e, `Unexpected error sending message to ${to}.`);
+  else {
+    try {
+      const sid = await TWILIO_CLIENT.messages.create({
+        body: body,
+        to: formatPhoneNumber(to),
+        from: formatPhoneNumber(SOURCE_NUMBER)
+      });
+  
+      return fmt.packSuccess(sid);
+    }
+    catch (e) {
+      return fmt.packError(e, `Unexpected error sending message to ${to}.`);
+    }
   }
 }
 
