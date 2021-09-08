@@ -38,7 +38,7 @@ app.use("/", indexRoutes);
 app.use("/api", apiRoutes);
 
 // listen
-app.listen(process.env.PORT);
+app.listen(process.env.PORT || 3000);
 
 //----------------------------------------------
 //------------------- INIT ---------------------
@@ -64,5 +64,5 @@ async function init_runCritical(func, exitCode, ...args) {
   await init_runCritical( config.init, 1 );
   await init_runCritical( qualtrics.init, 2 );
 
-  console.log(`App running on port ${process.env.PORT}...`);
+  console.log(`App running on port ${process.env.PORT || 3000}...`);
 })();
