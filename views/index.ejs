@@ -11,15 +11,26 @@
 
 <!doctype html>
 <head>
-  <title>Survey Tracker - Home</title>
+  <title>GRH Survey Tracker</title>
 
+  <link rel="stylesheet" href="css/styles_0_3.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
 </head>
 <body>
-  <!-- NAVBAR GOES HERE -->
-  <% include ./ejs_partials/navbar.ejs %>
-
   <div id="surveys-app">
+
+    <div id="block-while-loading"
+      :class='{ visible: !!contentLoading }'
+    >
+      <div class="spinner-border text-primary" role="status">
+        <!-- <span class="visually-hidden">Loading...</span> -->
+      </div>
+
+      <div> {{ loadingMessage }} </div>
+    </div>
+
+    <!-- NAVBAR GOES HERE -->
+    <% include ./ejs_partials/navbar.ejs %>
 
     <table class="table">
       <thead>
@@ -34,19 +45,21 @@
       <tbody>
         <tr v-for='(s,si) in surveys'>
           <td>
+            <label>
+              {{ si+1 }}
+            </label>
+
             <button type='button' class='btn btn-outline-danger btn-sm'
-              
               :title='`Untrack survey #${si+1} (${s.qualtricsId})`'
-              @click.once='untrackSurvey(s.qualtricsId)'
+              @click='untrackSurvey(s.survey_id)'
             >
               &times;
             </button>
-            {{ si+1 }}
           </td>
-          <td> {{ s.name }} </td>
-          <td> {{ s.qualtricsId }} </td>
-          <td> {{ s.subjectPhone }} </td>
-          <td> {{ s.notes }} </td>
+          <td> {{ s.survey_name }} </td>
+          <td> {{ s.survey_id }} </td>
+          <td> {{ s.subject_tel }} </td>
+          <td> {{ s.subject_id }} </td>
         </tr>
 
         <tr>
@@ -89,29 +102,74 @@
 const APP = new Vue({
   el: '#surveys-app',
   data: {
-    newSurvey: {
-      qualtricsId: '',
-      subjectPhone: '',
-      notes: ''
-    },
+    surveys: [],
 
-    surveys: [{
-      qualtricsId: 'SV_whatever',
-      subjectPhone: '(954)389-4091',
-      notes: 'yoyoyo'
-    }],
+    newSurvey: {
+      // qualtricsId: '',
+      // subjectPhone: '',
+      // notes: ''
+    },
 
     settings: {
 
-    }
+    },
+
+    contentLoading: false,
+    loadingMessage: 'Loading surveys...'
   },
   methods: {
     async refresh() {
+      this.contentLoading = true;
 
+      const res = await axios.get('/api/surveys');
+      const { surveys } = res.data;
+
+      this.surveys = surveys;
+
+      this.contentLoading = false;
+    },
+
+    async untrackSurvey(surveyId) {
+      this.contentLoading = true;
+      this.loadingMessage = 'Untracking survey...';
+
+      const data = {
+        SurveyId: surveyId
+      };
+
+      try {
+        await axios.delete('/api/surveys', { data });
+        await this.refresh();
+      }
+      catch (e) {
+        console.error(e);
+      }
     },
 
     async trackNewSurvey() {
+      this.contentLoading = true;
+      this.loadingMessage = 'Tracking new survey...';
 
+      const { qualtricsId, subjectPhone, notes } = this.newSurvey;
+      const data = {
+        SurveyId: qualtricsId,
+        SubjectTel: subjectPhone,
+        SubjectId: notes
+      };
+
+      console.log(data);
+
+      try {
+        await axios.put('/api/surveys', data);
+        await this.refresh();
+
+        this.newSurvey = {};
+      }
+      catch (e) {
+        console.error(e);
+      }
+
+      this.contentLoading = false;
     },
 
     /**
