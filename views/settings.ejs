@@ -154,7 +154,7 @@
       // send to server
       $.ajax({
         url: "/api/updateSettings",
-        type: "POST",
+        type: "PATCH",
         data: {
           RemoveInactive: $remove_inactive,
           PollInterval: $poll_interval,
