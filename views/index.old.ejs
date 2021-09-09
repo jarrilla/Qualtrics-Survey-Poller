@@ -1,0 +1,227 @@
+<%# index.ejs
+  #
+  # TODO: document
+  # TODO: fix table styling
+  %>
+
+
+<%# locals:
+  # ExistingItems: [] -- array of existing survey-tracker items in dynamodb
+%>
+
+<!doctype html>
+<head>
+  <title>Survey Tracker - Home</title>
+
+  <link rel="stylesheet" type="text/css" href="css/styles.css">
+
+</head>
+<body>
+  <!-- NAVBAR GOES HERE -->
+  <% include ./ejs_partials/navbar.ejs %>
+
+  <div id="main">
+    <div class="table-div">
+      <table class="content-table">
+        <thead>
+          <tr>
+            <th><!-- remove row --></th>
+            <th><!-- edit row --></th>
+            <th>Survey Name</th>
+            <th>Survey Id</th>
+            <th>Phone #</th>
+            <th>(opt) Identifier</th>
+            <th><!-- query status --></th>
+            <th><!-- track button --></th>
+          </tr>
+        </thead>
+        <tbody id="tracker-tbody">
+          <%
+          if (locals.ExistingItems) {
+            for(let i=0; i < ExistingItems.length; i++) {
+              const item = ExistingItems[i];
+          %>
+
+          <tr>
+            <td><button class="remove-row-btn">-</button></td>
+            <%#<td class="edit-cell"><button class="edit-cell-btn">Edit</button></td>%>
+            <%# TODO: add edit functionality %>
+            <td></td>
+            <td class="surveyName-cell">
+              <%- item.survey_name %>
+            </td>
+
+            <td class="surveyId-cell">
+              <%-item.survey_id%>
+            </td>
+
+            <td class="subjectTel-cell">
+              <%-item.subject_tel%>
+            </td>
+
+            <td class="subjectId-cell">
+              <% if (item.subject_id) { %>
+              <%-item.subject_id%>
+              <% } %>
+            </td>
+
+            <td class="row-status tracking">&#10004;</td>
+            <td></td>
+          </tr>
+
+          <% }} %>
+
+        </tbody>
+        <tfoot id="tracker-tfoot">
+          <tr>
+            <td colspan="8">
+              <button id="new-survey-btn">New Entry</button>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+
+  <!-- ON LOADS -->
+  <script>
+    // load event listeners for un-tracking a survey
+    $("button.remove-row-btn").click(function(){ RemoveRow_EventListener( $(this).parent().parent() ); });
+
+    // TODO:
+    // load event listeners for editing a survey being tracked
+  </script>
+
+  <!-- LISTENERS -->
+  <script>
+    const getTextFromField = function(tr, cell_class, is_input) {
+      let selector = cell_class;
+      if (is_input) selector += " input";
+
+      const $element = $(tr).find(selector).first();
+      const $text = is_input ? $element.val() : $element.text();
+      return $text.trim();
+    };
+
+    // common doc elements
+    const getSurveyName = tr => $(tr).find(".surveyName-cell").first().text().trim();
+
+    const getSurveyId = (tr, is_input) => getTextFromField(tr, ".surveyId-cell", is_input);
+    const getSubjectTel = (tr, is_input) => getTextFromField(tr, ".subjectTel-cell", is_input);
+    const getSubjectId = (tr, is_input) => getTextFromField(tr, ".subjectId-cell", is_input);
+    const getRowFields = (tr, is_new_row) => { return { SurveyId: getSurveyId(tr, is_new_row), SubjectTel: getSubjectTel(tr, is_new_row), SubjectId: getSubjectId(tr, is_new_row) }; };
+
+    // TrackSurvey_EventListener()
+    // event listener for "Track" button
+    // ask server to attempt to track the given survey if the ID is valid
+    const TrackSurvey_EventListener = tr => {
+      const row_fields = getRowFields(tr, true);
+
+      // check that suvey_id isn't empty
+      if (!row_fields.SurveyId) {
+        alert("Survey Id cannot be empty!");
+        return;
+      }
+
+      // check phone number
+      const phone_num = row_fields.SubjectTel;
+      const phone_match = phone_num.match(/\d{10}/);
+      if (!phone_match) {
+        alert("Please enter a valid phone number!");
+        return;
+      }
+
+      // cell elements
+      const $name_el = $(tr).find("td.surveyName-cell").first();
+      const $status_el = $(tr).find("td.row-status").first().hide();
+      const $track_btn = $(tr).find("button.check-row-btn").first();
+
+      // disable button
+      $($track_btn).attr("disabled", true);
+
+      $($status_el).text("...").show("slow", function() {
+        $.ajax({
+          url: "/api/trackSurvey",
+          type: "POST",
+          data: row_fields,
+          success: function(data) {
+            const _survey_name = data.survey_name;
+            $($name_el).text(_survey_name).fadeIn("slow");
+
+            $($status_el).hide("slow", function() {
+              $(this).html("&#10004;").show("slow");
+              $($track_btn).fadeOut("slow");
+              $($status_el).removeClass("not-tracking").addClass("tracking");
+
+              // replace inputs
+              $(tr).find(".surveyId-cell input").first().replaceWith( data.survey_id );
+              $(tr).find(".subjectTel-cell input").first().replaceWith( data.subject_tel );
+              $(tr).find(".subjectId-cell input").first().replaceWith( data.subject_id || "" );
+            });
+
+            // TODO: remove inputs
+          },
+          error: function(jqXHR) {
+            $($status_el).hide("slow", function() {
+              $(this).html("&#10008;").show("slow", function() {
+                alert(jqXHR.responseJSON.error);
+              });
+              $($track_btn).attr("disabled", false);
+              $($status_el).removeClass("tracking").addClass("not-tracking");
+            });
+          }
+        });
+      });
+    };
+
+    // RemoveRow_EventListener()
+    // event listener for "-" button
+    // if row is being tracked...
+    // survey will be removed from DB and all tracking intervals will be cleared
+    const RemoveRow_EventListener = tr => {
+      const survey_name = getSurveyName(tr);
+      if (!survey_name) {
+        $(tr).fadeOut("slow");
+        return;
+      }
+
+      const user_res = confirm("Are you sure you want to remove this row? This action cannot be undone.");
+      if (user_res === false) return;
+      
+      $.ajax({
+        url: "/api/untrackSurvey",
+        type: "POST",
+        data: { SurveyId: getSurveyId(tr) },
+        success: function(data) {
+          $(tr).fadeOut("slow");
+        },
+        error: function (jqXHR) {
+          alert(jqXHR.responseJSON.error);
+        }
+      });
+    };
+
+    // add row listener
+    $("#new-survey-btn").click(function() {
+      // make a new row and append it to tracker table
+      const $new_row = $(`<tr>
+          <td><button class="remove-row-btn">-</button></td>
+          <td class="edit-cell"></td>
+          <td class="surveyName-cell"></td>
+          <td class="surveyId-cell"><input type="text"></td>
+          <td class="subjectTel-cell"><input type="text"></td>
+          <td class="subjectId-cell"><input type="text"></td>
+          <td class="row-status align-center"></td>
+          <td><button class="check-row-btn">Track</button></td>
+        </tr>`).appendTo("#tracker-tbody");
+
+      const $remove_btn = $($new_row).find("button.remove-row-btn").first();
+      $($remove_btn).click(function(){ RemoveRow_EventListener( $new_row ); });
+
+      const $track_btn = $($new_row).find("button.check-row-btn").first();
+      $($track_btn).click(function(){ TrackSurvey_EventListener( $new_row ); });
+    });
+  </script>
+</body>
