@@ -2,28 +2,58 @@
 // All of our DynamoDB handlers & table setup
 
 const AWS = require("aws-sdk");
-
-// libs
-const fmt = require("./format");
 const config = require("./config");
+const ServiceError = require("./ServiceError");
 
-// setup AWS objects
-const __AWS_CONFIG__ = config.IS_DEBUG ? {
-  region: process.env.AWS_REGION,
-  endpoint: "http://localhost:8000"
-} : {
-  accessKeyId: process.env.AWS_ACCESS_KEY,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION
-};
-AWS.config.update(__AWS_CONFIG__);
-const DOC_CLIENT = new AWS.DynamoDB.DocumentClient();
+let DOC_CLIENT;
 const SURVEYS_TABLE = process.env.SURVEYS_DATA_TABLE;
 
+// setup AWS objects
+const __AWS_CONFIG__ = config.IS_DEBUG ?
+{
+  region:   process.env.AWS_REGION,
+  endpoint: "http://localhost:8000"
+} :
+{
+  accessKeyId:      process.env.AWS_ACCESS_KEY,
+  secretAccessKey:  process.env.AWS_SECRET_ACCESS_KEY,
+  region:           process.env.AWS_REGION
+};
+AWS.config.update(__AWS_CONFIG__);
 
-// Scane the survey tracking table for all entries
-// TODO: keep checking for more keys
-async function scanTable() {
+const DOC_CLIENT = new AWS.DynamoDB.DocumentClient();
+
+(function init() {
+  DOC_CLIENT = new AWS.DynamoDB.DocumentClient();
+})();
+
+// ------------------------------------------------------
+// ------------------------------------------------------
+
+module.exports = {
+  ScanTable,
+  PutItem,
+  GetLastRecordedResponseTime,
+  UpdateLastRecordedResponseTime,
+  RemoveItem,
+  UpdateStoredSettings,
+  ReadStoredSettings,
+  ResetResponses
+};
+
+// ------------------------------------------------------
+// ------------------------------------------------------
+// --------------------- EXPORTS ------------------------
+// ------------------------------------------------------
+// ------------------------------------------------------
+
+/**
+ * Scan SURVEYS_TABLE for all items.
+ * Ignores __APP_SETTINGS__ item.
+ * 
+ * @returns Items in table.
+ */
+async function ScanTable() {
   const params = {
     TableName: SURVEYS_TABLE,
     KeySchema: [
@@ -39,10 +69,10 @@ async function scanTable() {
   try {
     const data = await DOC_CLIENT.scan(params).promise();
 
-    return fmt.packSuccess(data);
+    return [null, data];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error scanning SurveyTracker data-table.");
+    return [new ServiceError(e)];
   }
 }
 
@@ -53,7 +83,7 @@ async function scanTable() {
  * @param {string} subject_tel 
  * @param {string} subject_id 
  */
-async function putItem(survey_name, survey_id, subject_tel, subject_id=null) {
+async function PutItem(survey_name, survey_id, subject_tel, subject_id=null) {
   const params = {
     TableName: SURVEYS_TABLE,
     Item: {
@@ -80,17 +110,12 @@ async function putItem(survey_name, survey_id, subject_tel, subject_id=null) {
   try {
     // don't need to store result; put() returns {}
     await DOC_CLIENT.put(params).promise();
-    return fmt.packSuccess(params.Item);
+    // return fmt.packSuccess(params.Item);
+    return [null, params.Item];
   }
   catch (e) {
-    let msg = "Unexpected error storing survey to SurveyTracker data-table.";
-
-    // item already exists in table
-    if (e.code == "ConditionalCheckFailedException") {
-      msg = `Survey with id: ${survey_id} is already being tracked.`;
-    }
-    
-    return fmt.packError(e, msg);
+    const httpStatus = e.code === 'ConditionalCheckFailedException' ? 405 : 500;
+    return [new ServiceError(e, httpStatus)];
   }
 }
 
@@ -98,7 +123,7 @@ async function putItem(survey_name, survey_id, subject_tel, subject_id=null) {
  * Attempt to remove an item matching survey_id.
  * @param {string} survey_id 
  */
-async function removeItem(survey_id) {
+async function RemoveItem(survey_id) {
   try {
     const params = {
       TableName: SURVEYS_TABLE,
@@ -108,10 +133,12 @@ async function removeItem(survey_id) {
     };
 
     await DOC_CLIENT.delete(params).promise();
-    return fmt.packSuccess(null);
+    // return fmt.packSuccess(null);
+    return [null, null];
   }
   catch (e) {
-    fmt.packError(e, "Unexpected error attempting to remove survey from data-table.");
+    // fmt.packError(e, "Unexpected error attempting to remove survey from data-table.");
+    return [new ServiceError(e)];
   }
 }
 
@@ -122,7 +149,7 @@ async function removeItem(survey_id) {
  * @param {Date} new_date 
  * @param {boolean} increment_count 
  */
-async function updateLastRecordedResponseTime(survey_id, new_date, increment_count) {
+async function UpdateLastRecordedResponseTime(survey_id, new_date, increment_count) {
   try {
     const params = {
       TableName: SURVEYS_TABLE,
@@ -140,10 +167,12 @@ async function updateLastRecordedResponseTime(survey_id, new_date, increment_cou
     }
 
     const res = await DOC_CLIENT.update(params).promise();
-    return fmt.packSuccess(res);
+    // return fmt.packSuccess(res);
+    return [null, res];
   }
   catch (e) {
-    fmt.packError(e, "Unexpected error updating last response time in SurveyTracker data-table.");
+    // fmt.packError(e, "Unexpected error updating last response time in SurveyTracker data-table.");
+    return [new ServiceError(e)];
   }
 }
 
@@ -151,7 +180,7 @@ async function updateLastRecordedResponseTime(survey_id, new_date, increment_cou
  * Get a survey's latest response time if it exists.
  * @param {string} survey_id Qualtrics survey ID
  */
-async function getLastRecordedResponseTime(survey_id) {
+async function GetLastRecordedResponseTime(survey_id) {
   try {
     const params = {
       TableName: SURVEYS_TABLE,
@@ -161,10 +190,12 @@ async function getLastRecordedResponseTime(survey_id) {
     };
 
     const data = await DOC_CLIENT.get(params).promise();
-    return fmt.packSuccess(data);
+    // return fmt.packSuccess(data);
+    return [null, data];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error reading response time from SurveyTracker data-table.");
+    // return fmt.packError(e, "Unexpected error reading response time from SurveyTracker data-table.");
+    return [new ServiceError(e)];
   }
 }
 
@@ -172,7 +203,7 @@ async function getLastRecordedResponseTime(survey_id) {
  * 
  * @param {*} bulk_settings all the settings to update. Verified in front-end
  */
-async function updateStoredSettings(bulk_settings) {
+async function UpdateStoredSettings(bulk_settings) {
   const { RemoveInactive, PollInterval, AllowedDays, IsScheduleRestricted, RestrictedSchedule } = bulk_settings;
 
   const params = {
@@ -191,14 +222,19 @@ async function updateStoredSettings(bulk_settings) {
 
   try {
     await DOC_CLIENT.update(params).promise();
-    return fmt.packSuccess(null);
+    // return fmt.packSuccess(null);
+    return [null, null];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error updating settings in data-table.");
+    // return fmt.packError(e, "Unexpected error updating settings in data-table.");
+    return [new ServiceError(e)];
   }
 }
 
-async function readStoredSettings() {
+/**
+ * Read app settings from DB.
+ */
+async function ReadStoredSettings() {
   const params = {
     TableName: SURVEYS_TABLE,
     Key: { survey_id: "__APP_SETTINGS__" }
@@ -206,14 +242,21 @@ async function readStoredSettings() {
 
   try {
     const data = await DOC_CLIENT.get(params).promise();
-    return fmt.packSuccess(data);
+    // return fmt.packSuccess(data);
+    return [null, data];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error reading app settings from data-table.");
+    // return fmt.packError(e, "Unexpected error reading app settings from data-table.");
+    return [new ServiceError(e)];
   }
 }
 
-async function resetResponses(survey_id) {
+/**
+ * Reset all tracked survey response-counters to 0.
+ * @param {string} survey_id Qualtrics Survey ID
+ * @returns 
+ */
+async function ResetResponses(survey_id) {
   const params = {
     TableName: SURVEYS_TABLE,
     Key: { survey_id: survey_id },
@@ -226,20 +269,11 @@ async function resetResponses(survey_id) {
 
   try {
     const res = DOC_CLIENT.update(params).promise();
-    return fmt.packSuccess(res);
+    // return fmt.packSuccess(res);
+    return [null, res];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error resetting survey count. SurveyId: " + survey_id);
+    // return fmt.packError(e, "Unexpected error resetting survey count. SurveyId: " + survey_id);
+    return [new ServiceError(e)];
   }
 }
-
-module.exports = {
-  scanTable,
-  putItem,
-  getLastRecordedResponseTime,
-  updateLastRecordedResponseTime,
-  removeItem,
-  updateStoredSettings,
-  readStoredSettings,
-  resetResponses
-};
