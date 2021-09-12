@@ -54,7 +54,7 @@ module.exports = {
     }
   }
 
-  let { status } = last_error?.response;
+  let { status } = last_error?.response || {};
   // let { errorMessage } = last_error?.response?.meta.error;
   if (!status) status = 500;
 
@@ -117,7 +117,7 @@ async function notifyDev(error) {
 
   let text = 'Error: ' + error.toString() + '\n\n';
   if ( error instanceof ProviderError ) {
-    text += 'HTTP Status Code: ' + error.httpStatus;
+    text += 'HTTP Status Code: ' + error.httpStatus + '\n\n';
   }
   text += 'Stack:\n' + error.stack;
 
