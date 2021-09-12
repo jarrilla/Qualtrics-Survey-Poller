@@ -18,12 +18,14 @@ require('./providers/twilio.service');
 
 // includes
 const express = require("express");
+const cors = require('cors');
 
 // setup express
 const app = express();
 app.use( express.json() );
 app.use( express.urlencoded({ extended: true }) );
+app.use( cors() );
 app.use( '/api', require('./app.controller') );
 
-const PORT = process.env.PORT || 3333;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`App running on port ${PORT}`));
