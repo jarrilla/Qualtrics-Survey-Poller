@@ -129,6 +129,8 @@
 <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.4/axios.min.js" integrity="sha512-lTLt+W7MrmDfKam+r3D2LURu0F47a3QaW5nF0c6Hl0JDZ57ruei+ovbg7BrZ+0bjVJ5YgzsAWE+RreERbpPE1g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
+const API_ROOT_URL = 'http://localhost:3000';
+
 const APP = new Vue({
   el: '#surveys-app',
   data: {
@@ -147,16 +149,18 @@ const APP = new Vue({
     contentLoading: false,
     loadingMessage: 'Loading surveys...',
 
-    notifications: [{
-      status: '',
-      msg: ''
-    }]
+    notifications: [
+      // {
+      //   status: '',
+      //   msg: ''
+      // }
+    ]
   },
   methods: {
     async refresh() {
       this.contentLoading = true;
 
-      const res = await axios.get('/api/surveys');
+      const res = await axios.get(API_ROOT_URL + '/api/surveys');
       const { surveys } = res.data;
 
       this.surveys = surveys;
@@ -173,7 +177,7 @@ const APP = new Vue({
       };
 
       try {
-        await axios.delete('/api/surveys', { data });
+        await axios.delete(API_ROOT_URL + '/api/surveys', { data });
         await this.refresh();
       }
       catch (e) {
@@ -193,7 +197,7 @@ const APP = new Vue({
       };
 
       try {
-        await axios.put('/api/surveys', data);
+        await axios.put(API_ROOT_URL + '/api/surveys', data);
         await this.refresh();
 
         this.newSurvey = {};
