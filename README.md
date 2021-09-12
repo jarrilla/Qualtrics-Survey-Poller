@@ -15,7 +15,7 @@ However, using webhooks with Qualtrics requires the user to be a "Qualtrics bran
 ### Setup & Testing
 Point your browser to `> ./client/index.html`.
 
-To run the server, `> cd ./server ` and `> yarn dev`;
+To run the server, `> cd ./server` and `> yarn dev`;
 
 To test our API, use the survey:
 http://cmu.ca1.qualtrics.com/jfe/form/SV_dnEGQcB3RAcAVW5
