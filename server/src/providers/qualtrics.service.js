@@ -6,26 +6,20 @@
 // -----------------------------------
 // -----------------------------------
 module.exports = {
-  init,
-  trackNewSurvey,
-  untrackSurvey,
-  updateIntervalDelay,
-  resetAllSurveyCounters
+  TrackNewSurvey,
+  UntrackSurvey,
+
+  UpdateIntervalDelay,
+  ResetAllSurveyCounters
 };
 // -----------------------------------
 
-
-// packages
 const axios = require("axios");
-
-
-// libs
-const
-config      = require("./config"),
-dbHandlers  = require("./dbHandlers"),
-fmt         = require("./format"),
-twilioApi   = require("./twilioApiHandlers"),
-tools       = require("./tools");
+const { BackgroundServiceErrorHandler, ProviderCallWrapper, GetHoursMinutesFromTimeString24 } = require("../utils");
+const { EXIT_CODES, IS_DEBUG, GetIntervalDelay, GetIsTodayAllowed, GetIsScheduleRestricted, GetRestrictedSchedule, GetRemoveInactive } = require("../config/app.config");
+const { SetSurveyLatestResponseTime, AddSurvey, GetSurveys, ResetSurveyCounters, GetSurveyLatestResponseTime, RemoveSurvey } = require("./dynamo.repository");
+// const ProviderError = require("./ProviderError");
+const { TextProgressMessage } = require("./twilio.service");
 // -----------------------------------
 
 
@@ -40,15 +34,6 @@ const INTERVAL_MAP = new Map();
 // when flipping from false -> true, we update the latest response time
 // to effectively ignore any responses submitted while we weren't tracking
 let LastPollingAllowed = false;
-
-// rewards for completing surveys
-// the last index of each is used for when more than 8 surveys are completed
-// so surveys past 8 reward $0 => total is still $28
-const PER_SURVEY_REWARD = ["1", "1.50", "2", "2.50", "3", "4", "6", "8", "0"];
-const TOTAL_REWARD = ["1", "2.50", "4.50", "7", "10", "14", "20", "28", "28"];
-
-// max number of api call attempts
-const MAX_ATTEMPTS=5;
 
 // (ms) time to way before polling progress exports again
 const PROG_POLL_INTERVAL_DELAY=500;
@@ -66,31 +51,37 @@ const EXPORT_SURVEY_URL = (survey_id) => `${SURVEY_URL(survey_id)}/export-respon
 const EXPORT_PROGRESS_URL = (survey_id, progress_id) =>  `${EXPORT_SURVEY_URL(survey_id)}/${progress_id}`;
 const RESPONSE_FILE_URL = (survey_id, file_id) => `${EXPORT_SURVEY_URL(survey_id)}/${file_id}/file`;
 
-// HELPER FUNCTION to re-try API calls up to a few times before giving up
- async function _callWrapper_(p) {
-  let last_error;
-  for (let i=0; i < MAX_ATTEMPTS; i++) {
-    try {
-      const res = await p;
-      return fmt.packSuccess(res.data);
-    }
-    catch (e) {
-      // TODO: log all errors to DB
-      last_error = e;
-    }
-  }
-  return [last_error];
-}
+/**
+ * Initialize module.
+ * Get all surveys being tracked & queue them for polling
+ */
+ (async function() {
+  console.assert(!IS_DEBUG, "Tracking existing surveys...");
 
-// HELPER FUNCTION to check for export progress completion every few seconds
+  const [db_err, db_data] = await ProviderCallWrapper( GetSurveys() );
+  if (db_err) return process.exit( EXIT_CODES.QUALTRICS_INIT_FAIL );
+
+  const survey_ids = (db_data?.Items || []).map(x => x.survey_id);
+  queueSurveyIdsForPolling(survey_ids);
+
+  return [null, null];
+})();
+
+/**
+ * HELPER FUNCTION to check for export progress completion every few seconds
+ * @param {Number} current_try 
+ * @param {string} survey_id 
+ * @param {string} progress_id 
+ * @returns 
+ */
 async function _waitForProgressCompletion_(current_try, survey_id, progress_id) {
   const promise = new Promise(async function(resolve, reject) {
     if (++current_try == MAX_PROG_POLL_ATTEMPTS) reject("Timed out waiting for progress request.");
 
     // @ts-ignore
-    const [err, data] = await _callWrapper_( axios.get(EXPORT_PROGRESS_URL(survey_id, progress_id), AXIOS_CONFIG) );
+    const [err, data] = await ProviderCallWrapper( axios.get(EXPORT_PROGRESS_URL(survey_id, progress_id), AXIOS_CONFIG) );
 
-    if (err) reject("Unexpected error reading export progress data.");  
+    if (err) reject(err);  
     else if (data.result && data.result.percentComplete == 100.0) resolve(data);
     else setTimeout(async function() {
       try {
@@ -118,9 +109,9 @@ async function createResponseExport(survey_id) {
   };
   
   // @ts-ignore
-  const [err, data] = await _callWrapper_( axios.post(EXPORT_SURVEY_URL(survey_id), post_data, AXIOS_CONFIG) );
-  if (err) return fmt.packError(err, "Unexpected error creating response export.");
-  else return fmt.packSuccess(data);
+  const [err, data] = await ProviderCallWrapper( axios.post(EXPORT_SURVEY_URL(survey_id), post_data, AXIOS_CONFIG) );
+  if (err) return [err];
+  return [null, data];
 }
 
 // Get Survey
@@ -130,9 +121,9 @@ async function createResponseExport(survey_id) {
 async function getSurveyInfo(survey_id) {
   
   // @ts-ignore
-  const [err, data] = await _callWrapper_( axios.get(SURVEY_URL(survey_id), AXIOS_CONFIG) );
-  if (err) return fmt.packError(err, "Unexpected error reading survey info.");
-  else return fmt.packSuccess(data);
+  const [err, data] = await ProviderCallWrapper( axios.get(SURVEY_URL(survey_id), AXIOS_CONFIG) );
+  if (err) return [err];
+  return [null, data];
 }
 
 // Get Response Export Progress
@@ -144,10 +135,10 @@ async function getSurveyInfo(survey_id) {
 async function getResponseExportProgress(survey_id, progress_id) {
   try {
     const res = await _waitForProgressCompletion_(0, survey_id, progress_id);
-    return fmt.packSuccess(res);
+    return [null, res];
   }
-  catch (e) {
-    return fmt.packError(e, "Unexpected error waiting for export progress completion.");
+  catch (err) {
+    return [err];
   }
 }
 
@@ -159,8 +150,8 @@ async function getResponseExportFile(survey_id, file_id) {
 
   // @ts-ignore
   const [err, data] = await _callWrapper_( axios.get(RESPONSE_FILE_URL(survey_id, file_id), AXIOS_CONFIG) );
-  if (err) return fmt.packError(err, "Unexpected error reading survey responses file.");
-  else return fmt.packSuccess(data);
+  if (err) return [err];
+  return [null, data];
 }
 // -----------------------------------
 // -----------------------------------
@@ -169,20 +160,21 @@ async function getResponseExportFile(survey_id, file_id) {
 // Helper functions
 // -----------------------------------
 async function checkForLatestResponse(survey_id) {
-  try {
-    const [err, res] = await getLatestSurveyResponse(survey_id);
+  const [err, res] = await getLatestSurveyResponse(survey_id);
     if (err) return [err];
-    if (!res) return fmt.packSuccess(false);
-
+    if (!res) return [null, false];
+  
+  try {
     const latest_response_time = new Date(res.values.endDate);
-    const [db_err, db_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest_response_time, false);
+    const [db_err, db_res] = await SetSurveyLatestResponseTime(survey_id, latest_response_time, false);
     if (db_err) return [err];
-    if (!db_res) return fmt.packSuccess(false);
+    // if (!db_res) return [null, false];
 
-    return fmt.packSuccess(true);
+    return [null, !!db_res];
   }
   catch (e) {
-    return fmt.packError(e, "Unexpected error adding latest response to new survey tracker.");
+    return [e];
+    // return [new ServiceError(e, 500)];
   }
 }
 
@@ -202,7 +194,11 @@ async function getLatestSurveyResponse(survey_id) {
   if (e2) return [e2];
   const file_id = export_prog.result.fileId;
 
-  if (!file_id) return fmt.packError(Error(`Invalid fileId for survey ${survey_id} and progressId ${progress_id}`), "Error reading fileId.");
+  if (!file_id) {
+    return BackgroundServiceErrorHandler(
+      new Error(`Invalid file_id for survey ${survey_id} and progress_id ${progress_id}`)
+    );
+  }
 
   // finally, we poll the file for data
   const [e3, export_file] = await getResponseExportFile(survey_id, file_id);
@@ -211,7 +207,8 @@ async function getLatestSurveyResponse(survey_id) {
   const latest_response = responses.length ? responses[ responses.length-1 ] : null;
 
   // done
-  return fmt.packSuccess(latest_response);
+  // return fmt.packSuccess(latest_response);
+  return [null, latest_response];
 }
 
 /**
@@ -220,8 +217,8 @@ async function getLatestSurveyResponse(survey_id) {
  * 
  * @param {[string]} surveIdsArr array of Qualtrics Survey Ids
  */
-function QueueSurveyIdsForTracking(surveIdsArr) {
-  const delay = config.getIntervalDelay();
+function queueSurveyIdsForPolling(surveIdsArr) {
+  const delay = GetIntervalDelay();
 
   const m = INTERVAL_MAP;
   const _set_interval = sid => {
@@ -238,25 +235,25 @@ function QueueSurveyIdsForTracking(surveIdsArr) {
 }
 
 function canPollNow() {
-  const is_today_allowed = config.getIsTodayAllowed();
+  const is_today_allowed = GetIsTodayAllowed();
   if (!is_today_allowed) return false;
 
-  const is_schedule_restricted = config.getIsScheduleRestricted();
+  const is_schedule_restricted = GetIsScheduleRestricted();
   if (is_schedule_restricted) {
     const time_now = new Date();
     const hour_now = time_now.getHours();
     const min_now = time_now.getMinutes();
 
-    const { Start, End } = config.getRestrictedSchedule();
+    const { Start, End } = GetRestrictedSchedule();
 
-    const allowed_start = tools.getHoursMinutesFromTimeString24(Start);
+    const allowed_start = GetHoursMinutesFromTimeString24(Start);
     const start_hour = allowed_start.Hour;
     const start_min = allowed_start.Minute;
 
     // too early, can't start polling yet
     if ( hour_now < Start || (hour_now == start_hour && min_now < start_min) ) return false;
 
-    const allowed_end = tools.getHoursMinutesFromTimeString24(End);
+    const allowed_end = GetHoursMinutesFromTimeString24(End);
     const end_hour = allowed_end.Hour;
     const end_min  = allowed_end.Minute;
 
@@ -280,7 +277,7 @@ async function pollSurveyResponses(survey_id) {
   // so we ignore any responses submitted while we weren't polling
   if ( !LastPollingAllowed && can_poll_now ) {
     
-    await _callWrapper_( checkForLatestResponse(survey_id) );
+    await ProviderCallWrapper( checkForLatestResponse(survey_id) );
   }
 
   // update polling allowed flag
@@ -288,29 +285,26 @@ async function pollSurveyResponses(survey_id) {
 
   // can't poll yet -> exit
   if (!can_poll_now) {
-    
     return;
   }
-
   
   try {
     // untrack inactive if user setting set to true
-    if (config.getRemoveInactive() === true) {
-      const [e1,r1] = await getSurveyInfo(survey_id);
-      if (e1) return [e1];
+    if (GetRemoveInactive() === true) {
+      const [e1,r1] = await ProviderCallWrapper( getSurveyInfo(survey_id) );
+      if (e1) [e1];
 
       const is_active = Boolean(r1.result.isActive);
       if (!is_active) {
-        untrackSurvey(survey_id);
+        ProviderCallWrapper( UntrackSurvey(survey_id) );
         return;
       }
 
-      // TODO: (emit to browser??)
     }
 
     const [api_res, db_res] = [
-      await getLatestSurveyResponse(survey_id),
-      await dbHandlers.getLastRecordedResponseTime(survey_id)
+      await ProviderCallWrapper( getLatestSurveyResponse(survey_id) ),
+      await ProviderCallWrapper( GetSurveyLatestResponseTime(survey_id) )
     ];
 
     const [api_err, api_data] = api_res;
@@ -326,67 +320,29 @@ async function pollSurveyResponses(survey_id) {
     let do_update = false;
     const latest = new Date(api_data.values.endDate);
     const last = db_data.Item.last_recorded_response_time ? new Date(db_data.Item.last_recorded_response_time) : null;
+
     if (last == null || latest > last) do_update = true;
 
     // proceed to update
     if (do_update) {
-      const [update_err, update_res] = await dbHandlers.updateLastRecordedResponseTime(survey_id, latest, true);
+      const [update_err, update_res] =
+        await ProviderCallWrapper( SetSurveyLatestResponseTime(survey_id, latest, true) );
+
       if (update_err) return [update_err];
 
       // get number of logged responses from db result
       const num_logged_responses = Number(update_res.Attributes.responses_today);
 
       // send progress SMS
-      const [msg_err, ] = await sendProgressMessage(num_logged_responses, db_data.Item.subject_tel);
+      const [msg_err, ] = await TextProgressMessage(num_logged_responses, db_data.Item.subject_tel);
       if (msg_err) return [msg_err];
     }
   }
   catch (e) {
-    fmt.packError(e, "Unepected error polling survey.");
+    return [e];
   }
 }
 
-/**
- * Send a progress message to the specified phone number
- * @param {number} total_responses number of recorder responses today
- */
-async function sendProgressMessage(total_responses, subject_tel) {
-  // function should not have been called with 0 responses, exit
-  if (total_responses == 0) return;
-
-  // which index to use from rewards arrays
-  const reward_arrays_index = (total_responses <= 8) ? total_responses-1 : 8;
-
-  // arary index for next survey
-  // if we haven't logged 8 reponses yet, next survey will be worth more, otherwise it'll be worth 0
-  const next_reward_arrays_index = (reward_arrays_index < 8) ? reward_arrays_index+1 : reward_arrays_index;
-
-  // message to send
-  let msg;
-  if (total_responses < 8) {
-    msg = `You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey. `
-        + `Total earned today is $${TOTAL_REWARD[reward_arrays_index]}. `
-        + `If this isn't your last survey, next one is worth $${PER_SURVEY_REWARD[next_reward_arrays_index]}.`;
-  }
-  else if (total_responses == 8) {
-    msg = `You earned $${PER_SURVEY_REWARD[reward_arrays_index]} for this survey. `
-        + `Total earned today is $${TOTAL_REWARD[reward_arrays_index]}. Congratulations!`;
-  }
-  else {
-    msg = `You have already responded to 8 surveys today.`;
-  }
-
-  // now, send the message
-  try {
-    const [msg_err, ] = await twilioApi.sendMessage(msg, subject_tel);
-    if (msg_err) return [msg_err];
-
-    return fmt.packSuccess(null);
-  }
-  catch (e) {
-    return fmt.packError(e, "Unexpected error sending twilio message.");
-  }
-}
 // -----------------------------------
 // -----------------------------------
 
@@ -402,30 +358,35 @@ async function sendProgressMessage(total_responses, subject_tel) {
  * @param {string?} subject_id
  * @returns [*,string] The survey name in Qualtrics, if successful.
  */
-async function trackNewSurvey(survey_id, subject_tel, subject_id) {
+async function TrackNewSurvey(survey_id, subject_tel, subject_id) {
   // ping API to get survey name
-  const [api_err, api_res] = await getSurveyInfo(survey_id);
-  if (api_err) return [api_err];
+  const [api_err, api_res] = await ProviderCallWrapper( getSurveyInfo(survey_id) );
+  if (api_err) {
+    api_err.details = 'Getting survey info';
+    return [api_err];
+  }
   const survey_name = api_res.result.name;
   
   // put item in DB first
   // @ts-ignore
-  const [db_err, db_res] = await dbHandlers.putItem(survey_name, ...arguments);
-  if (db_err) return [db_err];
+  const [db_err, db_res] =
+    await ProviderCallWrapper( AddSurvey(survey_name, survey_id, subject_tel, subject_id) );
+  
+  if (db_err) [db_err];
 
-  await checkForLatestResponse(survey_id);
+  await ProviderCallWrapper( checkForLatestResponse(survey_id) );
   
   if (INTERVAL_MAP.has(survey_id) === false) {
-    INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, config.getIntervalDelay(), survey_id));
+    INTERVAL_MAP.set(survey_id, setInterval(pollSurveyResponses, GetIntervalDelay(), survey_id));
   }
 
-  return fmt.packSuccess(db_res);
+  return [null, db_res];
 }
 
 /**
  * Clear interval map and queue all survyes+new one to be tracked..
  */
-function updateIntervalDelay() {
+function UpdateIntervalDelay() {
   const survey_ids = [];
   INTERVAL_MAP.forEach((v,k) => {
     clearInterval(v);
@@ -436,28 +397,16 @@ function updateIntervalDelay() {
   INTERVAL_MAP.clear();
 
   // @ts-ignore
-  QueueSurveyIdsForTracking(survey_ids);
-}
-
-async function init() {
-  console.assert(!config.IS_DEBUG, "Tracking existing surveys...");
-
-  const [db_err, db_data] = await dbHandlers.scanTable();
-  if (db_err) return [db_err];
-
-  const survey_ids = db_data.Items.map(x => x.survey_id);
-  QueueSurveyIdsForTracking(survey_ids);
-
-  return fmt.packSuccess(null);
+  queueSurveyIdsForPolling(survey_ids);
 }
 
 /**
  * TODO: clear interval & unset entry from global map
  * @param {string} survey_id Qualtrics survey ID
  */
-async function untrackSurvey(survey_id) {
-  const [db_err, ] = await dbHandlers.removeItem(survey_id);
-  if (db_err) return [db_err];
+async function UntrackSurvey(survey_id) {
+  const [db_err, ] = await ProviderCallWrapper( RemoveSurvey(survey_id) );
+  if (db_err) [db_err]
 
   const interval = INTERVAL_MAP.get(survey_id);
   if (interval) {
@@ -465,29 +414,31 @@ async function untrackSurvey(survey_id) {
   }
   INTERVAL_MAP.delete(survey_id);
 
-  return fmt.packSuccess(null);
+  return [null, null];
 }
 
 /**
  * Reset all surveys' #recorded_responses to 0
+ * TODO: make this more robust
  */
-async function resetAllSurveyCounters() {
+async function ResetAllSurveyCounters() {
   const survey_ids = [ ...INTERVAL_MAP.keys() ];
+  const promises = survey_ids.map(
+    x => ProviderCallWrapper( ResetSurveyCounters(x) )
+  );
 
-  const _try_ = async (f, ...args) => {
-    for (let i=0; i < 50; i++) {
-      const [err, data] = await f(...args);
-      if (err) console.log(err);
-      else return data;
-    }
-  };
+  // const _try_ = async (f, ...args) => {
+  //   for (let i=0; i < 50; i++) {
+  //     const [err, data] = await f(...args);
+  //     if (err) console.error(err);
+  //     else return data;
+  //   }
+  // };
 
-  const promises = [];
-  for (let i=0; i < survey_ids.length; i++) {
-    promises.push( _try_( dbHandlers.resetResponses, survey_ids[i] ) );
-  }
+  // const promises = [];
+  // for (let i=0; i < survey_ids.length; i++) {
+  //   promises.push( _try_( dbHandlers.ResetResponses, survey_ids[i] ) );
+  // }
 
   await Promise.all(promises);
-
-  // this is pretty sloppy.. but this app should never be under that much strain.. so.. ok
 }

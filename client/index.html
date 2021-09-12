@@ -1,19 +1,8 @@
-<%# index.ejs
-  #
-  # TODO: document
-  # TODO: fix table styling
-  %>
-
-
-<%# locals:
-  # ExistingItems: [] -- array of existing survey-tracker items in dynamodb
-%>
-
 <!doctype html>
 <head>
   <title>GRH Survey Tracker</title>
 
-  <link rel="stylesheet" href="css/styles_0_3.css">
+  <link rel="stylesheet" href="css/styles.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
 </head>
 <body>
@@ -29,8 +18,49 @@
       <div> {{ loadingMessage }} </div>
     </div>
 
-    <!-- NAVBAR GOES HERE -->
-    <% include ./ejs_partials/navbar.ejs %>
+    <div id="notifications-area">
+      <div class="notify"
+        v-for='x in notifications'
+        :class='{ success: !x.isError }'
+      >
+      
+        <div v-if='x.isError'>
+          Error! ({{ x.status }})
+        </div>
+        <div v-else>
+          Success!
+        </div>
+
+        <div>
+          {{ x.msg }}
+        </div>
+
+      </div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">GRH Survey Tracker</a>
+    
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page">
+                Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active">
+                Settings
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
 
     <table class="table">
       <thead>
@@ -115,7 +145,12 @@ const APP = new Vue({
     },
 
     contentLoading: false,
-    loadingMessage: 'Loading surveys...'
+    loadingMessage: 'Loading surveys...',
+
+    notifications: [{
+      status: '',
+      msg: ''
+    }]
   },
   methods: {
     async refresh() {
@@ -156,8 +191,6 @@ const APP = new Vue({
         SubjectTel: subjectPhone,
         SubjectId: notes
       };
-
-      console.log(data);
 
       try {
         await axios.put('/api/surveys', data);

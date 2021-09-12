@@ -1,6 +1,7 @@
 // @ts-check
+// config/app.config.js
 
-// libs/config.js
+
 // user-set config settings (globals)
 // these are infrequently updated, so we just store them in memory
 // rather than in DB (no need for frequent lookup)
@@ -35,19 +36,27 @@ let ALLOWED_DAYS;
 // if FALSE, no polling is done on that day
 // managed by node-schedule according to settings.ALLOWED_DAYS
 let IS_TODAY_ALLOWED;
-
 //----------------------------------------------
+
+const EXIT_CODES = {
+  APP_INIT_FAIL:        1,
+  QUALTRICS_INIT_FAIL:  2,
+  DYNAMO_INIT_FAIL:     3,
+  TWILIO_INIT_FAIL:     4
+};
+
 module.exports = {
-  init,
-  updateAppSettings,
+  UpdateAppSettings,
 
   // getters
-  getIntervalDelay,
-  getIsScheduleRestricted,
-  getRestrictedSchedule,
-  getRemoveInactive,
-  getAllowedDays,
-  getIsTodayAllowed,
+  GetIntervalDelay,
+  GetIsScheduleRestricted,
+  GetRestrictedSchedule,
+  GetRemoveInactive,
+  GetAllowedDays,
+  GetIsTodayAllowed,
+
+  EXIT_CODES,
 
   // debug
   IS_DEBUG
@@ -55,21 +64,14 @@ module.exports = {
 //----------------------------------------------
 
 
-// packages ------------------------------------
-const nodeSchedule = require("node-schedule");
-//----------------------------------------------
-
-
-// libs ----------------------------------------
-const
-dbHandlers    = require("./dbHandlers"),
-fmt           = require("./format"),
-qualtrics     = require("./qualtricsApiHandlers"),
-tools         = require("./tools");
-//----------------------------------------------
+const { scheduleJob, RecurrenceRule } = require('node-schedule');
+const { GetSettings, SetSettings } = require('../providers/dynamo.repository');
+const { GetDifferentIndices, ProviderCallWrapper } = require('../utils');
+const { ResetAllSurveyCounters, UpdateIntervalDelay } = require('../providers/qualtrics.service');
 
 
 // Helper functions ----------------------------
+// ---------------------------------------------
 function updateAllowedDays(diffIndicesArray) {
 
   const arr = ALLOWED_DAYS;
@@ -80,7 +82,7 @@ function updateAllowedDays(diffIndicesArray) {
     arr[k] = !b;
 
     // updated scheduler
-    nodeSchedule.scheduleJob( makeRuleAtMidnightOnDay(k) , function(x) {
+    scheduleJob( makeRuleAtMidnightOnDay(k) , function(x) {
       IS_TODAY_ALLOWED = x;
     }.bind(null, arr[k]));
   }
@@ -102,11 +104,13 @@ function restoreRestrictedScheduleRules() {
   for (let i=0; i < arr.length; i++) {
     const b = arr[i];
 
-    nodeSchedule.scheduleJob( makeRuleAtMidnightOnDay(i) , function(x) {
+    scheduleJob( makeRuleAtMidnightOnDay(i) , function(x) {
       IS_TODAY_ALLOWED = b;
     }.bind(null, b));
   }
 }
+
+// Exported functions --------------------------
 
 /**
  * 
@@ -115,7 +119,7 @@ function restoreRestrictedScheduleRules() {
 function makeRuleAtMidnightOnDay(day) {
   if (day < 0 || day > 6) return null;
 
-  const rule = new nodeSchedule.RecurrenceRule();
+  const rule = new RecurrenceRule();
   rule.minute = 0;
   rule.hour = 6; // (offset by +5 b/c of UTC timezone difference)
   if (day !== null) rule.dayOfWeek = day;
@@ -124,54 +128,7 @@ function makeRuleAtMidnightOnDay(day) {
 }
 //----------------------------------------------
 
-
-// Exported functions --------------------------
-async function init() {
-  console.assert(!IS_DEBUG, "Loading settings...");
-
-  const [sett_err, sett_data] = await dbHandlers.readStoredSettings();
-  if (sett_err) return [sett_err]
-
-  if (sett_data) {
-    const settings = sett_data.Item;
-
-    REMOVE_INACTIVE = JSON.parse(settings.remove_inactive);
-    INTERVAL_DELAY = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
-    ALLOWED_DAYS = settings.allowed_days.map(x => JSON.parse(x));
-    IS_SCHEDULE_RESTRICTED = JSON.parse(settings.is_schedule_restricted);
-    RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[0];
-    RESTRICTED_SCHEDULE.End = settings.restricted_schedule[1];
-  }
-  else {
-    // default values in case DB missing settings data
-
-    REMOVE_INACTIVE = true;
-    INTERVAL_DELAY = 10*60*1000;
-    ALLOWED_DAYS = Array(7).fill(false);
-    IS_SCHEDULE_RESTRICTED = false;
-    RESTRICTED_SCHEDULE.Start = "08:00";
-    RESTRICTED_SCHEDULE.End = "23:00";
-  }
-
-  // is today allowed?
-  IS_TODAY_ALLOWED = ALLOWED_DAYS[ new Date().getDay() ];
-
-  // debug polling delay
-  if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // debug only
-
-  // setup scheduled response reset at midnight (or 1 during EDT) every day
-  nodeSchedule.scheduleJob( makeRuleAtMidnightOnDay(null) , function() {
-    qualtrics.resetAllSurveyCounters();
-  });
-
-  // restore restricted schedule
-  restoreRestrictedScheduleRules();
-
-
-  return fmt.packSuccess(null);
-}
-
-async function updateAppSettings(bulk_settings) {
+async function UpdateAppSettings(bulk_settings) {
   // sanitize polling interval
   let { PollInterval } = bulk_settings;
   if (PollInterval < 5) {
@@ -185,7 +142,7 @@ async function updateAppSettings(bulk_settings) {
     bulk_settings.PollInterval - 0.5;
   }
 
-  const [db_err, ] = await dbHandlers.updateStoredSettings(bulk_settings);
+  const [db_err, ] = await SetSettings(bulk_settings);
   if (db_err) return [db_err];
 
   // db update successful, update in memory now
@@ -197,10 +154,10 @@ async function updateAppSettings(bulk_settings) {
   const do_rebalance = (INTERVAL_DELAY != PollInterval);
 
   // re-schedule IS_TODAY_ALLOWED if allowed days changed
-  const diff_days = tools.getDifferentIndices( ALLOWED_DAYS, AllowedDays );
+  const diff_days = GetDifferentIndices( ALLOWED_DAYS, AllowedDays );
   const do_dayChange = diff_days.length > 0;
 
-// updated globals
+  // updated globals
   REMOVE_INACTIVE = JSON.parse(RemoveInactive);
   INTERVAL_DELAY = PollInterval;
   IS_SCHEDULE_RESTRICTED = JSON.parse(IsScheduleRestricted);
@@ -208,17 +165,65 @@ async function updateAppSettings(bulk_settings) {
   RESTRICTED_SCHEDULE.End = RestrictedSchedule[1];
 
   // rebalance if delay changed
-  if (do_rebalance) qualtrics.updateIntervalDelay();
+  if (do_rebalance) UpdateIntervalDelay();
 
   // fire node-schedule when necessary
   if (do_dayChange) updateAllowedDays(diff_days);
 
-  return fmt.packSuccess(null);
+  return [null, null];
 }
 
-function getIntervalDelay() { return INTERVAL_DELAY; }
-function getIsScheduleRestricted() { return IS_SCHEDULE_RESTRICTED; }
-function getRestrictedSchedule() { return RESTRICTED_SCHEDULE; }
-function getRemoveInactive() { return REMOVE_INACTIVE; }
-function getAllowedDays() { return ALLOWED_DAYS; }
-function getIsTodayAllowed() { return IS_TODAY_ALLOWED; }
+function GetIntervalDelay()         { return INTERVAL_DELAY; }
+function GetIsScheduleRestricted()  { return IS_SCHEDULE_RESTRICTED; }
+function GetRestrictedSchedule()    { return RESTRICTED_SCHEDULE; }
+function GetRemoveInactive()        { return REMOVE_INACTIVE; }
+function GetAllowedDays()           { return ALLOWED_DAYS; }
+function GetIsTodayAllowed()        { return IS_TODAY_ALLOWED; }
+
+/**
+ * Initialize module.
+ * Get stored settings from DB & load them into config globals.
+ */
+(async function() {
+  console.assert(!IS_DEBUG, "Loading settings...");
+
+  const [sett_err, sett_data] = await ProviderCallWrapper( GetSettings() );
+  if (sett_err) return process.exit( EXIT_CODES.APP_INIT_FAIL );
+
+  if (sett_data) {
+    const settings = sett_data.Item;
+
+    REMOVE_INACTIVE           = JSON.parse(settings.remove_inactive);
+    INTERVAL_DELAY            = settings.poll_interval * 60 * 1000; // stored as (min) we want (ms)
+    ALLOWED_DAYS              = settings.allowed_days.map(x => JSON.parse(x));
+    IS_SCHEDULE_RESTRICTED    = JSON.parse(settings.is_schedule_restricted);
+    RESTRICTED_SCHEDULE.Start = settings.restricted_schedule[0];
+    RESTRICTED_SCHEDULE.End   = settings.restricted_schedule[1];
+  }
+  else {
+    // default values in case DB missing settings data
+
+    REMOVE_INACTIVE           = true;
+    INTERVAL_DELAY            = 10*60*1000;
+    ALLOWED_DAYS              = Array(7).fill(false);
+    IS_SCHEDULE_RESTRICTED    = false;
+    RESTRICTED_SCHEDULE.Start = "08:00";
+    RESTRICTED_SCHEDULE.End   = "23:00";
+  }
+
+  // is today allowed?
+  IS_TODAY_ALLOWED = ALLOWED_DAYS[ new Date().getDay() ];
+
+  // debug polling delay
+  if (IS_DEBUG) INTERVAL_DELAY = 30*1000; // debug only
+
+  // setup scheduled response reset at midnight (or 1 during EDT) every day
+  scheduleJob( makeRuleAtMidnightOnDay(null) , function() {
+    ResetAllSurveyCounters();
+  });
+
+  // restore restricted schedule
+  restoreRestrictedScheduleRules();
+
+  return [null, null];
+})();

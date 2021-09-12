@@ -5,18 +5,12 @@
 //----------------------------------------------
 
 // imports
-const
-express       = require("express"),
-router        = express.Router();
-
-// libs
-const
-config        = require("../../libs/config"),
-qualtricsApi  = require("../../libs/qualtricsApiHandlers");
-const { scanTable } = require("../../libs/dbHandlers");
-
-//----------------------------------------------
-
+const express = require("express");
+const router = express.Router();
+const { TrackNewSurvey, UntrackSurvey } = require('./providers/qualtrics.service');
+const { GetSurveys, GetSettings } = require('./providers/dynamo.repository');
+const { APIErrorHandler } = require("./utils");
+const { UpdateAppSettings } = require("./config/app.config");
 
 // TODO
 // set up authentication middleware
@@ -30,15 +24,27 @@ router.get('/surveys', getTrackedSurveys);
 router.put('/surveys', trackNewSurvey);
 router.delete('/surveys', untrackSurvey);
 
-router.patch('/surveys/settings', updateSettings);
+router.get('/settings', getSettings);
+router.patch('/settings', updateSettings);
 
 //----------------------------------------------
 //--------------- DEFINITIONS ------------------
 //----------------------------------------------
 
+async function getSettings(_req, res) {
+  const [err, data]  = await GetSettings();
+  if (err) return APIErrorHandler(err, res);
+
+  const { settings } = data.Item || {};
+  res.send({ settings });
+}
+
+/**
+ * Get an array of all tracked surveys.
+ */
 async function getTrackedSurveys(_req, res) {
-  const [err, data] = await scanTable();
-  if (err) return res.status(err.status_code).send(err.msg);
+  const [err, data] = await GetSurveys();
+  if (err) return APIErrorHandler(err, res);
 
   const surveys = data?.Items || [];
   res.send({ surveys });
@@ -48,8 +54,8 @@ async function getTrackedSurveys(_req, res) {
  * Set the time between interval triggers
  */
 async function updateSettings(req, res) {
-  const [err, ] = await config.updateAppSettings(req.body);
-  if (err) res.status(err.status_code).send({error:err.msg});
+  const [err, ] = await UpdateAppSettings(req.body);
+  if (err) APIErrorHandler(err, res);
   else res.status(200).send();
 }
 
@@ -65,9 +71,9 @@ async function updateSettings(req, res) {
 async function trackNewSurvey(req, res) {
   const { SurveyId, SubjectTel, SubjectId } = req.body;
 
-  const [queue_err, queue_res] = await qualtricsApi.trackNewSurvey(SurveyId, SubjectTel, SubjectId);
-  if (queue_err) res.status(queue_err.status_code).send({error:queue_err.msg});
-  else res.status(200).send(queue_res);
+  const [err, ] = await TrackNewSurvey(SurveyId, SubjectTel, SubjectId);
+  if (err) APIErrorHandler(err, res);
+  else res.statusStatus(201);
 }
 
 /**
@@ -76,7 +82,7 @@ async function trackNewSurvey(req, res) {
 async function untrackSurvey(req, res) {
   const { SurveyId } = req.body;
 
-  const [error, ] = await qualtricsApi.untrackSurvey(SurveyId);
-  if (error) res.status(error.status_code).send({error:error.msg});
-  else res.status(200).send(true);
+  const [error, ] = await UntrackSurvey(SurveyId);
+  if (error) APIErrorHandler(error, res);
+  else res.sendStatus(200);
 }
