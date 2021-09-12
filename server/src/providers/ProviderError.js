@@ -7,7 +7,8 @@ module.exports = class ProviderError extends Error {
    * @param {Error} err 
    */
   constructor(err, httpStatus=500) {
-    this.message = err.message;
+    super(err.message);
+
     this.name = err.name;
     this.stack = err.stack;
 
